@@ -65,6 +65,20 @@ export const INPUT = {
   BOOST: 32,
 }
 
+// Race grid — 2-wide staggered positions on the start straight (facing +X)
+export const SPAWN_GRID = [
+  { x: 10,  y: -33 },  { x: 10,  y: -37 },
+  { x:  5,  y: -33 },  { x:  5,  y: -37 },
+  { x:  0,  y: -33 },  { x:  0,  y: -37 },
+  { x: -5,  y: -33 },  { x: -5,  y: -37 },
+  { x: -10, y: -33 },  { x: -10, y: -37 },
+  { x: -15, y: -33 },  { x: -15, y: -37 },
+  { x: -20, y: -33 },  { x: -20, y: -37 },
+  { x: -25, y: -33 },  { x: -25, y: -37 },
+  { x: -30, y: -33 },  { x: -30, y: -37 },
+  { x: -35, y: -33 },  { x: -35, y: -37 },
+]
+
 export const CAR_COLORS = [
   '#e74c3c', // red
   '#3498db', // blue

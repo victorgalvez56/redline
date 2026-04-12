@@ -1,6 +1,6 @@
 import CANNON from 'cannon'
 import { PhysicsWorld } from './PhysicsWorld.js'
-import { NETWORK } from '../../shared/constants.js'
+import { NETWORK, SPAWN_GRID } from '../../shared/constants.js'
 
 const { tickRate, physicsRate, maxPlayers } = NETWORK
 
@@ -67,7 +67,7 @@ export class GameRoom {
           car.chassis.position.set(x, y, 12)
           car.chassis.velocity.set(0, 0, 0)
           car.chassis.angularVelocity.set(0, 0, 0)
-          car.chassis.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), -Math.PI * 0.5)
+          car.chassis.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), 0)
           console.log(`[ready] ${player.name} — car reset to (${x.toFixed(2)}, ${y.toFixed(2)}, 12)`)
         }
       })
@@ -83,6 +83,19 @@ export class GameRoom {
         if (targetSocket) {
           targetSocket.emit('player:bumped', { fromId: socket.id, fromPos })
         }
+      })
+
+      socket.on('chat:message', ({ text }) => {
+        const player = this.players.get(socket.id)
+        if (!player || !text || typeof text !== 'string') return
+        const clean = text.slice(0, 120).trim()
+        if (!clean) return
+        // Broadcast to everyone else
+        socket.broadcast.emit('chat:message', {
+          name: player.name,
+          text: clean,
+          color: player.carColor ?? 0,
+        })
       })
 
       socket.on('player:snapshot', (state) => {
@@ -141,12 +154,9 @@ export class GameRoom {
   }
 
   _getSpawnPosition() {
-    const angle  = Math.random() * Math.PI * 2
-    const radius = 5
-    return {
-      x: Math.cos(angle) * radius,
-      y: Math.sin(angle) * radius,
-      z: 12,   // same height as client reveal.go() so both drop simultaneously
-    }
+    // Assign grid slot based on current player count (wraps if full)
+    const slot = this.players.size % SPAWN_GRID.length
+    const { x, y } = SPAWN_GRID[slot]
+    return { x, y, z: 12 }
   }
 }

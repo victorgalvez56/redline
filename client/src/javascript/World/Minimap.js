@@ -1,8 +1,8 @@
 // Minimap — top-left canvas showing all player positions
 // Local player = white arrow (shows heading). Remote players = colored dots.
 
-const MAP_PX    = 160    // canvas size in CSS/device pixels
-const MAP_RANGE = 40     // world units visible from center in each direction
+const MAP_PX    = 180    // canvas size in CSS/device pixels
+const MAP_RANGE = 60     // world units visible from center in each direction
 const SCALE     = MAP_PX / (MAP_RANGE * 2)
 
 // Matches the BODY_MATCAP color indices in RemoteCar.js / Car.js
@@ -25,6 +25,8 @@ export default class Minimap
         this.remoteCarManager  = _options.remoteCarManager  // .cars Map
         this.network           = _options.network           // .localPlayerName, null if solo
         this.localCarColor     = _options.localCarColor ?? 0
+        this.trackOuter        = _options.trackOuter  || null  // [{x,y}]
+        this.trackInner        = _options.trackInner  || null  // [{x,y}]
 
         this._buildCanvas()
     }
@@ -81,6 +83,21 @@ export default class Minimap
         ctx.restore()
     }
 
+    _drawTrackPath(ctx, pts, cx, cy)
+    {
+        ctx.beginPath()
+        for(let i = 0; i < pts.length; i++)
+        {
+            const p = this._toCanvas(pts[i].x, pts[i].y, cx, cy)
+            if(i === 0) ctx.moveTo(p.x, p.y)
+            else        ctx.lineTo(p.x, p.y)
+        }
+        ctx.closePath()
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)'
+        ctx.lineWidth   = 1.5
+        ctx.stroke()
+    }
+
     _drawDot(ctx, x, y, color, size = 5)
     {
         ctx.beginPath()
@@ -115,19 +132,11 @@ export default class Minimap
         ctx.fillStyle = 'rgba(10, 10, 10, 0.82)'
         ctx.fillRect(0, 0, MAP_PX, MAP_PX)
 
-        // Subtle grid lines (every 10 world units)
-        ctx.strokeStyle = 'rgba(255,255,255,0.05)'
-        ctx.lineWidth   = 0.5
-        const gridStep  = 10 * SCALE
-        const offsetX   = (MAP_PX / 2) - (cx % 10) * SCALE
-        const offsetY   = (MAP_PX / 2) + (cy % 10) * SCALE
-        for(let gx = offsetX % gridStep; gx < MAP_PX; gx += gridStep)
+        // ── track outline ───────────────────────────────────────────────────
+        if(this.trackOuter && this.trackInner)
         {
-            ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, MAP_PX); ctx.stroke()
-        }
-        for(let gy = offsetY % gridStep; gy < MAP_PX; gy += gridStep)
-        {
-            ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(MAP_PX, gy); ctx.stroke()
+            this._drawTrackPath(ctx, this.trackOuter, cx, cy)
+            this._drawTrackPath(ctx, this.trackInner, cx, cy)
         }
 
         // ── remote players ──────────────────────────────────────────────────

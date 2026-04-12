@@ -69,6 +69,11 @@ export default class Network extends EventEmitter
             this.trigger('player:bumped', [data])
         })
 
+        this.socket.on('chat:message', (data) =>
+        {
+            this.trigger('chat:message', [data])
+        })
+
         // Latency measurement
         this._pingInterval = setInterval(() =>
         {
@@ -101,6 +106,11 @@ export default class Network extends EventEmitter
     sendBump(targetId, fromPos)
     {
         this.socket.emit('player:bump', { targetId, fromPos })
+    }
+
+    sendChat(text)
+    {
+        this.socket.emit('chat:message', { text })
     }
 
     playerReady()

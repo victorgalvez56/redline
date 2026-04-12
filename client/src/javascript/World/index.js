@@ -10,6 +10,7 @@ import Controls from './Controls.js'
 import Sounds from './Sounds.js'
 import RemoteCarManager from './RemoteCarManager.js'
 import Minimap from './Minimap.js'
+import Track from './Track.js'
 import gsap from 'gsap'
 
 export default class World
@@ -52,6 +53,7 @@ export default class World
         this.setMaterials()
         this.setShadows()
         this.setPhysics()
+        this.setTrack()
         if(this.network) this._setupSnapshotSender()
         if(this.network) this._setupBumpHandling()
         this.setObjects()
@@ -75,9 +77,10 @@ export default class World
             gsap.fromTo(this.reveal, { floorShadowsProgress: 0 }, { floorShadowsProgress: 1, duration: 3, delay: 0.5 })
             gsap.fromTo(this.shadows, { alpha: 0 }, { alpha: 0.5, duration: 3, delay: 0.5 })
 
-            const spawn = this._serverSpawnPos || { x: 0, y: 0 }
+            const spawn = this._serverSpawnPos || { x: 5, y: -35 }
             this.physics.car.chassis.body.sleep()
             this.physics.car.chassis.body.position.set(spawn.x, spawn.y, 12)
+            this.physics.car.chassis.body.quaternion.set(0, 0, 0, 1) // face +X (along start straight)
 
             window.setTimeout(() =>
             {
@@ -324,6 +327,16 @@ export default class World
         })
     }
 
+    setTrack()
+    {
+        this.track = new Track({
+            world:         this.physics.world,
+            floorMaterial: this.physics.materials.items.floor,
+            resources:     this.resources,
+        })
+        this.container.add(this.track.container)
+    }
+
     setMinimap()
     {
         const $map = document.getElementById('mp-minimap')
@@ -334,6 +347,8 @@ export default class World
             remoteCarManager: this.remoteCarManager || null,
             network:          this.network,
             localCarColor:    this.config.carColor ?? 0,
+            trackOuter:       this.track?.outerPath || null,
+            trackInner:       this.track?.innerPath || null,
         })
 
         this.time.on('tick', () => { this.minimap.update() })

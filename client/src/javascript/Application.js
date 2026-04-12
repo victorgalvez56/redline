@@ -8,6 +8,7 @@ import Resources from './Resources.js'
 import Camera from './Camera.js'
 import Network from './Network.js'
 import LobbyUI from './LobbyUI.js'
+import Chat from './Chat.js'
 
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
@@ -162,6 +163,7 @@ export default class Application
         this.network = new Network()
         this.network.connect()
         this.lobbyUI = new LobbyUI({ network: this.network, config: this.config })
+        this.chat = new Chat({ network: this.network })
     }
 
     setWorld()
