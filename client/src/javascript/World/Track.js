@@ -55,6 +55,7 @@ export default class Track
     _build()
     {
         const center = this._centerline()
+        this.centerPath = center
         const { outer, inner } = this._offsetPaths(center)
 
         // Store for minimap

@@ -426,6 +426,27 @@
             100% { opacity: 0; }
         }
 
+        /* Wrong-way indicator */
+        #wrong-way {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: monospace;
+            font-size: 32px;
+            font-weight: bold;
+            color: #e74c3c;
+            text-shadow: 0 0 30px rgba(231,76,60,0.6);
+            z-index: 700;
+            pointer-events: none;
+            animation: wrong-way-flash 0.6s infinite;
+        }
+        @keyframes wrong-way-flash {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.3; }
+        }
+
     </style>
 </head>
 <body>
@@ -689,6 +710,9 @@
 
     <!-- Lap completion note -->
     <div id="hud-lap-note"></div>
+
+    <!-- Wrong-way indicator -->
+    <div id="wrong-way">WRONG WAY ↺</div>
 
     <!-- Respawn flash -->
     <div id="respawn-flash"></div>

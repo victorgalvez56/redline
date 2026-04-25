@@ -31,6 +31,11 @@ export default class HUD
         {
             this._onLap(lapMs, lapCount, isNewBest)
         })
+
+        this.lapTimer.on('sector', ({ sectorIdx, sectorMs, isNewBest, bestMs }) =>
+        {
+            this._onSector(sectorIdx, sectorMs, isNewBest, bestMs)
+        })
     }
 
     show()
@@ -161,6 +166,26 @@ export default class HUD
     showBoost()
     {
         this._showNote('⚡ BOOST!', '#ffaa00')
+    }
+
+    _onSector(idx, sectorMs, isNewBest, bestMs)
+    {
+        const label = `S${idx + 1}`
+        if(isNewBest)
+        {
+            this._showNote(`🟣 ${label}  ${LapTimer.fmt(sectorMs)}`, '#cc88ff')
+        }
+        else if(bestMs !== null)
+        {
+            const delta = sectorMs - bestMs
+            const sign  = delta > 0 ? '+' : ''
+            const color = delta > 0 ? '#e74c3c' : '#2ecc71'
+            this._showNote(`${label}  ${sign}${(delta / 1000).toFixed(3)}s`, color)
+        }
+        else
+        {
+            this._showNote(`${label}  ${LapTimer.fmt(sectorMs)}`, '#fff')
+        }
     }
 
     _showNote(text, color)

@@ -27,6 +27,7 @@ export default class Minimap
         this.localCarColor     = _options.localCarColor ?? 0
         this.trackOuter        = _options.trackOuter  || null  // [{x,y}]
         this.trackInner        = _options.trackInner  || null  // [{x,y}]
+        this.boostPads         = _options.boostPads   || []   // [{x,y}]
 
         this._buildCanvas()
     }
@@ -161,6 +162,26 @@ export default class Minimap
                 ctx.textAlign    = 'center'
                 ctx.fillText(car.name, p.x, p.y - 8)
             }
+        }
+
+        // ── boost pads ──────────────────────────────────────────────────────
+        for(const pad of this.boostPads)
+        {
+            const p  = this._toCanvas(pad.x, pad.y, cx, cy)
+            const dx = p.x - MAP_PX / 2
+            const dy = p.y - MAP_PX / 2
+            if(Math.sqrt(dx * dx + dy * dy) > MAP_PX / 2 - 4) continue
+
+            ctx.save()
+            ctx.translate(p.x, p.y)
+            ctx.font      = '11px monospace'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillStyle = '#ffaa00'
+            ctx.shadowColor  = '#ffaa00'
+            ctx.shadowBlur   = 6
+            ctx.fillText('⚡', 0, 0)
+            ctx.restore()
         }
 
         // ── local player (center, always) ───────────────────────────────────

@@ -90,6 +90,8 @@ export default class World
         this.setGhostLap()
         this.setBoostPads()
         this.setEnvironment()
+        this._setupOffTrackDetection()
+        this._setupWrongWayDetection()
         this._setupRespawnFeedback()
         this._setupCameraEffects()
     }
@@ -296,6 +298,31 @@ export default class World
             this.lapTimer.setGate(this.track.gateOrigin, this.track.gateDir)
         }
 
+        // Add two sector checkpoints at ~33% and ~67% of the centerline
+        const center = this.track?.centerPath
+        if(center && center.length >= 3)
+        {
+            const N = center.length
+
+            // Sector 1 gate: ~33% mark
+            const i1    = Math.floor(N * 0.33)
+            const prev1 = center[(i1 - 1 + N) % N]
+            const next1 = center[(i1 + 1) % N]
+            const dx1   = next1.x - prev1.x
+            const dy1   = next1.y - prev1.y
+            const l1    = Math.sqrt(dx1 * dx1 + dy1 * dy1) || 1
+            this.lapTimer.addSector({ x: center[i1].x, y: center[i1].y }, { x: dx1 / l1, y: dy1 / l1 })
+
+            // Sector 2 gate: ~67% mark
+            const i2    = Math.floor(N * 0.67)
+            const prev2 = center[(i2 - 1 + N) % N]
+            const next2 = center[(i2 + 1) % N]
+            const dx2   = next2.x - prev2.x
+            const dy2   = next2.y - prev2.y
+            const l2    = Math.sqrt(dx2 * dx2 + dy2 * dy2) || 1
+            this.lapTimer.addSector({ x: center[i2].x, y: center[i2].y }, { x: dx2 / l2, y: dy2 / l2 })
+        }
+
         this.time.on('tick', () =>
         {
             if(this.physics && this.lapTimer._active)
@@ -481,6 +508,7 @@ export default class World
         })
         this.container.add(this.boostPads.container)
         this.time.on('tick', () => { this.boostPads.update() })
+        if(this.minimap) this.minimap.boostPads = this.boostPads._pads.map(p => ({ x: p.x, y: p.y }))
     }
 
     _setupRespawnFeedback()
@@ -550,6 +578,121 @@ export default class World
 
             this.camera.target.x = lx
             this.camera.target.y = ly
+        })
+    }
+
+    _setupOffTrackDetection()
+    {
+        const center = this.track.centerPath
+        if(!center || center.length === 0) return
+
+        const HALF_WIDTH   = 7       // track half-width (14m / 2)
+        const BUFFER       = 2.5     // extra margin before drag starts
+        const THRESHOLD_SQ = (HALF_WIDTH + BUFFER) ** 2
+
+        const $note  = document.getElementById('hud-lap-note')
+        let offTrack = false
+        let noteShown = false
+
+        this.time.on('tick', () =>
+        {
+            if(!this.lapTimer?._active || !this.physics) return
+
+            const body = this.physics.car.chassis.body
+            const px   = body.position.x
+            const py   = body.position.y
+
+            // Find closest centerline point
+            let minSq  = Infinity
+            for(const pt of center)
+            {
+                const dx = pt.x - px
+                const dy = pt.y - py
+                const sq = dx * dx + dy * dy
+                if(sq < minSq) minSq = sq
+            }
+
+            const wasOff = offTrack
+            offTrack = minSq > THRESHOLD_SQ
+
+            if(offTrack)
+            {
+                const dt     = Math.min(this.time.delta, 60)
+                // Halve speed every 2 seconds off-track
+                const factor = Math.pow(0.5, dt / 2000)
+                body.velocity.x *= factor
+                body.velocity.y *= factor
+            }
+
+            // Show/hide "OFF TRACK" note
+            if(offTrack && !wasOff && $note)
+            {
+                $note.textContent   = '⚠ OFF TRACK'
+                $note.style.color   = '#e67e22'
+                $note.style.opacity = '1'
+                noteShown = true
+            }
+            else if(!offTrack && wasOff && noteShown && $note)
+            {
+                $note.style.opacity = '0'
+                noteShown = false
+            }
+        })
+    }
+
+    _setupWrongWayDetection()
+    {
+        const center = this.track.centerPath
+        if(!center || center.length === 0) return
+
+        const $el = document.getElementById('wrong-way')
+        if(!$el) return
+
+        let score = 0   // accumulated "wrongness" ms — show indicator above threshold
+
+        this.time.on('tick', () =>
+        {
+            if(!this.lapTimer?._active || !this.physics) return
+
+            const dt   = Math.min(this.time.delta, 60)
+            const body = this.physics.car.chassis.body
+            const vel  = body.velocity
+            const px   = body.position.x
+            const py   = body.position.y
+
+            const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y)
+            if(speed < 3)
+            {
+                score = Math.max(score - dt * 3, 0)
+            }
+            else
+            {
+                // Find closest centerline point and its tangent
+                let minSq  = Infinity
+                let minIdx = 0
+                for(let i = 0; i < center.length; i++)
+                {
+                    const dx = center[i].x - px
+                    const dy = center[i].y - py
+                    const sq = dx * dx + dy * dy
+                    if(sq < minSq) { minSq = sq; minIdx = i }
+                }
+                const N    = center.length
+                const prev = center[(minIdx - 1 + N) % N]
+                const next = center[(minIdx + 1)     % N]
+                const tx   = next.x - prev.x
+                const ty   = next.y - prev.y
+                const tlen = Math.sqrt(tx * tx + ty * ty) || 1
+
+                const dotVelTrack = (vel.x * tx + vel.y * ty) / (speed * tlen)
+
+                if(dotVelTrack < -0.65)
+                    score = Math.min(score + dt, 1500)
+                else
+                    score = Math.max(score - dt * 2, 0)
+            }
+
+            $el.style.display = score > 900 ? 'block' : 'none'
         })
     }
 
