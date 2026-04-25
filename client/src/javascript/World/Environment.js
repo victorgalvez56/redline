@@ -30,6 +30,7 @@ export default class Environment
         this._buildTrees()
         this._buildStands()
         this._buildGravelTraps()
+        this._buildCurbs()
 
         // Atmospheric dark-blue background instead of pure black
         this.renderer.setClearColor(0x080c12, 1)
@@ -250,6 +251,66 @@ export default class Environment
 
         // Outside the upper-left hairpin (track curves SE around x≈-38,y≈-25)
         this._place(new THREE.PlaneGeometry(16, 14), mat, -50, -30, 0.02, 0, 0, -0.4)
+    }
+
+    // ── Track curbs ───────────────────────────────────────────────────────────
+    // Red/white alternating strips at the inside apex of each main corner.
+    // Track is CCW; inner wall = right side of direction of travel = ~7m right of centerline.
+
+    _buildCurbs()
+    {
+        const tex = this._curbTexture()
+        const mat = new THREE.MeshBasicMaterial({
+            map:        tex,
+            transparent: false,
+            depthWrite:  false,
+            side:        THREE.DoubleSide,
+            polygonOffset:      true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits:  -1,
+        })
+
+        const Z = 0.025  // just above SURFACE_Z (0.015)
+
+        // Centerline ctrl pts (approx) and their inner-apex positions:
+        //   Right hairpin: centerline (58,-22), inner side (+X) → strip at (65,-22)
+        //   Right upper:   centerline (58, 5), inner side (+X) → strip at (65, 5)
+        //   Top section:   centerline (0, 42), inner side (-Y) → strip at (0, 35)
+        //   Left hairpin:  centerline (-42,-5), inner side (+X) → strip at (-35,-5)
+        //   Lower-left:    centerline (-38,-25), inner side (+X) → strip at (-31,-25)
+        //   S/F straight:  centerline y=-35, inner side (-Y) → strip at y=-42 (wide)
+
+        // Right hairpin inner – strip runs roughly N-S
+        this._place(new THREE.PlaneGeometry(2, 14), mat, 64.5, -22,   Z, 0, 0,  0.42)
+        // Right upper inner – strip runs roughly N-S (mirrored angle)
+        this._place(new THREE.PlaneGeometry(2, 12), mat, 64.5,   6,   Z, 0, 0, -0.42)
+        // Top section inner – strip runs roughly E-W
+        this._place(new THREE.PlaneGeometry(16, 2), mat,    5,  35,   Z, 0, 0,  0.0)
+        // Left hairpin inner – strip runs roughly N-S
+        this._place(new THREE.PlaneGeometry(2, 12), mat,  -35,  -5,   Z, 0, 0,  Math.PI / 2)
+        // Lower-left inner
+        this._place(new THREE.PlaneGeometry(10, 2), mat,  -31, -27,   Z, 0, 0,  0.55)
+        // Start/finish inner (wide straight curb, south side)
+        this._place(new THREE.PlaneGeometry(24, 2), mat,   22, -42,   Z, 0, 0,  0.0)
+    }
+
+    _curbTexture()
+    {
+        const STRIPES = 8
+        const W = 512, H = 64
+        const canvas = document.createElement('canvas')
+        canvas.width  = W
+        canvas.height = H
+        const ctx = canvas.getContext('2d')
+        const sw  = W / STRIPES
+        for(let i = 0; i < STRIPES; i++)
+        {
+            ctx.fillStyle = i % 2 === 0 ? '#cc1111' : '#ffffff'
+            ctx.fillRect(i * sw, 0, sw, H)
+        }
+        const tex = new THREE.CanvasTexture(canvas)
+        tex.wrapS = THREE.RepeatWrapping
+        return tex
     }
 
     // ── Grandstands ──────────────────────────────────────────────────────────

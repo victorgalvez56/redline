@@ -56,6 +56,7 @@ export default class SkidMarks
         const speed   = Math.sqrt(vel.x * vel.x + vel.y * vel.y)
         const lateral = Math.abs(vel.x * hy - vel.y * hx)   // |cross product z|
         const skidding = speed > MIN_SPEED && lateral > MIN_LATERAL
+        this.skidding  = skidding   // exposed for World tick
 
         // Rear wheels are indices 2 and 3
         for(let wi = 2; wi <= 3; wi++)

@@ -484,6 +484,178 @@
             50%       { opacity: 0.3; }
         }
 
+        /* Boost screen flash */
+        #boost-flash {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at center, rgba(255,120,0,0) 35%, rgba(255,90,0,0.55) 100%);
+            pointer-events: none;
+            z-index: 700;
+            opacity: 0;
+        }
+        @keyframes boost-flash {
+            0%   { opacity: 1; }
+            40%  { opacity: 0.7; }
+            100% { opacity: 0; }
+        }
+
+        /* Lap summary card */
+        #lap-summary {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) translateY(-20px);
+            background: rgba(0,0,0,0.72);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255,255,255,0.09);
+            border-radius: 12px;
+            padding: 18px 26px 20px;
+            font-family: monospace;
+            color: #fff;
+            z-index: 600;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.35s, transform 0.35s cubic-bezier(0.22,1,0.36,1);
+            min-width: 250px;
+        }
+        #lap-summary.visible {
+            opacity: 1;
+            transform: translate(-50%, -50%) translateY(0);
+        }
+        #lap-summary-title {
+            font-size: 9px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.3);
+            text-align: center;
+            margin-bottom: 14px;
+        }
+        .ls-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .ls-row:last-child { border-bottom: none; }
+        .ls-total {
+            margin-top: 8px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.12) !important;
+            border-bottom: none !important;
+        }
+        .ls-label {
+            font-size: 10px;
+            color: rgba(255,255,255,0.35);
+            letter-spacing: 2px;
+            width: 26px;
+        }
+        .ls-val {
+            font-size: 15px;
+            letter-spacing: 1px;
+            flex: 1;
+            transition: color 0.2s;
+        }
+        .ls-delta {
+            font-size: 12px;
+            min-width: 64px;
+            text-align: right;
+            letter-spacing: 0.5px;
+        }
+        .ls-total .ls-val  { font-size: 22px; font-weight: bold; }
+        .ls-total .ls-label { font-size: 11px; letter-spacing: 2px; }
+
+        /* Race complete overlay */
+        #race-complete {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.88);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 900;
+            font-family: monospace;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.7s;
+        }
+        #race-complete.visible { opacity: 1; pointer-events: all; }
+        .rc-inner {
+            background: #0e0e0e;
+            border: 1px solid #2a2a2a;
+            border-radius: 16px;
+            padding: 36px 44px;
+            min-width: 320px;
+            max-width: 420px;
+            color: #fff;
+            text-align: center;
+        }
+        .rc-trophy  { font-size: 48px; margin-bottom: 6px; }
+        .rc-title   { font-size: 20px; font-weight: bold; letter-spacing: 4px; margin-bottom: 4px; }
+        .rc-sub     { font-size: 12px; color: #f1c40f; margin-bottom: 20px; letter-spacing: 1px; min-height: 16px; }
+        #rc-laps    { list-style: none; margin: 0 0 14px; padding: 0; text-align: left; }
+        .rc-lap-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid #1a1a1a;
+            font-size: 13px;
+        }
+        .rc-lap-row:last-child { border-bottom: none; }
+        .rc-lap-num  { color: rgba(255,255,255,0.35); font-size: 10px; letter-spacing: 1px; }
+        .rc-lap-time { letter-spacing: 1px; }
+        .rc-lap-row.rc-lap-best .rc-lap-time { color: #f1c40f; }
+        .rc-lap-row.rc-lap-invalid .rc-lap-time { color: #e74c3c; font-size: 11px; }
+        .rc-footer  { font-size: 11px; color: rgba(255,255,255,0.35); margin-bottom: 24px; letter-spacing: 1px; }
+        #rc-again {
+            background: #fff;
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 36px;
+            font-family: monospace;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: opacity 0.15s;
+        }
+        #rc-again:hover { opacity: 0.82; }
+
+        /* Sector timing sidebar (bottom-left, below minimap) */
+        #sector-timing {
+            display: none;
+            position: fixed;
+            top: 208px;
+            left: 16px;
+            font-family: monospace;
+            font-size: 11px;
+            color: #fff;
+            z-index: 500;
+            pointer-events: none;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 8px;
+            padding: 8px 12px;
+            min-width: 168px;
+        }
+        .st-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 3px 0;
+        }
+        .st-label {
+            font-size: 9px;
+            color: rgba(255,255,255,0.35);
+            letter-spacing: 2px;
+            width: 18px;
+        }
+        .st-time  { flex: 1; letter-spacing: 0.5px; }
+        .st-delta { font-size: 10px; min-width: 52px; text-align: right; }
+
     </style>
 </head>
 <body>
@@ -759,6 +931,40 @@
 
     <!-- Respawn flash -->
     <div id="respawn-flash"></div>
+
+    <!-- Sector timing sidebar -->
+    <div id="sector-timing">
+        <div class="st-row"><span class="st-label">S1</span><span class="st-time" id="st-s1-time">--:--.---</span><span class="st-delta" id="st-s1-delta"></span></div>
+        <div class="st-row"><span class="st-label">S2</span><span class="st-time" id="st-s2-time">--:--.---</span><span class="st-delta" id="st-s2-delta"></span></div>
+        <div class="st-row"><span class="st-label">S3</span><span class="st-time" id="st-s3-time">--:--.---</span><span class="st-delta" id="st-s3-delta"></span></div>
+    </div>
+
+    <!-- Boost screen flash -->
+    <div id="boost-flash"></div>
+
+    <!-- Lap summary card -->
+    <div id="lap-summary">
+        <div id="lap-summary-title">Lap complete</div>
+        <div>
+            <div class="ls-row"><span class="ls-label">S1</span><span class="ls-val" id="ls-s1">--:--.---</span><span class="ls-delta" id="ls-ds1"></span></div>
+            <div class="ls-row"><span class="ls-label">S2</span><span class="ls-val" id="ls-s2">--:--.---</span><span class="ls-delta" id="ls-ds2"></span></div>
+            <div class="ls-row"><span class="ls-label">S3</span><span class="ls-val" id="ls-s3">--:--.---</span><span class="ls-delta" id="ls-ds3"></span></div>
+            <div class="ls-row"><span class="ls-label">TOP</span><span class="ls-val" id="ls-speed">---</span><span class="ls-delta" style="color:rgba(255,255,255,0.35);font-size:11px">km/h</span></div>
+            <div class="ls-row ls-total"><span class="ls-label">LAP</span><span class="ls-val" id="ls-total">--:--.---</span><span class="ls-delta" id="ls-dtotal"></span></div>
+        </div>
+    </div>
+
+    <!-- Race complete overlay -->
+    <div id="race-complete">
+        <div class="rc-inner">
+            <div class="rc-trophy">🏁</div>
+            <div class="rc-title">RACE COMPLETE</div>
+            <div class="rc-sub" id="rc-sub"></div>
+            <ol id="rc-laps"></ol>
+            <div class="rc-footer" id="rc-footer"></div>
+            <button id="rc-again">Play Again</button>
+        </div>
+    </div>
 
     <!-- Start lights overlay (F1-style) -->
     <div id="start-lights-overlay">

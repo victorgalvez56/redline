@@ -18,7 +18,6 @@ import HUD from '../HUD.js'
 import SkidMarks from './SkidMarks.js'
 import Environment from './Environment.js'
 import SmokeParticles from './SmokeParticles.js'
-import GhostLap from './GhostLap.js'
 import BoostPads from './BoostPads.js'
 
 export default class World
@@ -84,10 +83,10 @@ export default class World
         this._setupYouLabel()
         this.setMinimap()
         this.setLapTimer()
+        this.setSectorMarkers()
         this.setHUD()
         this.setSkidMarks()
         this.setSmokeParticles()
-        this.setGhostLap()
         this.setBoostPads()
         this.setEnvironment()
         this._setupOffTrackDetection()
@@ -95,6 +94,7 @@ export default class World
         this._setupRespawnFeedback()
         this._setupMuteButton()
         this._setupCameraEffects()
+        this._setupRaceEnd()
     }
 
     setReveal()
@@ -338,6 +338,37 @@ export default class World
         })
     }
 
+    setSectorMarkers()
+    {
+        const gates = this.lapTimer?._sectorGates
+        if(!gates?.length) return
+
+        const COLORS = [0xff6600, 0x0066ff]
+        const R      = 8.0   // distance from centerline to cone (just outside track wall)
+        const H      = 1.4   // cone height
+        const GEO    = new THREE.ConeGeometry(0.38, H, 6)
+
+        gates.forEach((gate, i) =>
+        {
+            const { x, y } = gate.origin
+            const { x: dx, y: dy } = gate.dir
+            // Perpendicular direction (left of travel)
+            const px = -dy, py = dx
+
+            const mat = new THREE.MeshBasicMaterial({ color: COLORS[i] })
+
+            for(const sign of [-1, 1])
+            {
+                const mesh = new THREE.Mesh(GEO, mat)
+                mesh.position.set(x + px * R * sign, y + py * R * sign, H / 2)
+                mesh.rotation.x = Math.PI / 2
+                mesh.matrixAutoUpdate = false
+                mesh.updateMatrix()
+                this.container.add(mesh)
+            }
+        })
+    }
+
     setHUD()
     {
         this.hud = new HUD({
@@ -485,7 +516,12 @@ export default class World
     {
         this.skidMarks = new SkidMarks({ physics: this.physics })
         this.container.add(this.skidMarks.container)
-        this.time.on('tick', () => { this.skidMarks.update() })
+        this.time.on('tick', () =>
+        {
+            this.skidMarks.update()
+            if(this.skidMarks.skidding && this.lapTimer?._active)
+                this.sounds.play('screech', 0)
+        })
     }
 
     setSmokeParticles()
@@ -495,23 +531,23 @@ export default class World
         this.time.on('tick', () => { this.smokeParticles.update() })
     }
 
-    setGhostLap()
-    {
-        this.ghostLap = new GhostLap({
-            physics:  this.physics,
-            time:     this.time,
-            lapTimer: this.lapTimer,
-        })
-        this.scene.add(this.ghostLap._container)
-        this.time.on('tick', () => { this.ghostLap.update() })
-    }
-
     setBoostPads()
     {
+        const $boostFlash = document.getElementById('boost-flash')
+
         this.boostPads = new BoostPads({
             physics:  this.physics,
             time:     this.time,
-            onBoost:  () => this.hud?.showBoost(),
+            onBoost:  () =>
+            {
+                this.hud?.showBoost()
+                if($boostFlash)
+                {
+                    $boostFlash.style.animation = 'none'
+                    void $boostFlash.offsetWidth
+                    $boostFlash.style.animation = 'boost-flash 0.6s ease-out forwards'
+                }
+            },
         })
         this.container.add(this.boostPads.container)
         this.time.on('tick', () => { this.boostPads.update() })
@@ -588,18 +624,87 @@ export default class World
         })
     }
 
+    _setupRaceEnd()
+    {
+        const TOTAL_LAPS = 5
+        const lapTimes   = []     // { ms, invalid }
+
+        this.lapTimer.on('lap', ({ lapMs, lapCount, invalid }) =>
+        {
+            lapTimes.push({ ms: lapMs, invalid })
+
+            if(lapCount >= TOTAL_LAPS)
+            {
+                this.lapTimer.stop()
+                // Small delay so the per-lap summary card shows first
+                setTimeout(() => this._showRaceComplete(lapTimes, TOTAL_LAPS), 1800)
+            }
+        })
+    }
+
+    _showRaceComplete(lapTimes, totalLaps)
+    {
+        const $overlay = document.getElementById('race-complete')
+        if(!$overlay) return
+
+        const validTimes = lapTimes.filter(l => !l.invalid)
+        const bestMs     = validTimes.length ? Math.min(...validTimes.map(l => l.ms)) : null
+        const totalMs    = validTimes.reduce((s, l) => s + l.ms, 0)
+
+        // Fill lap list
+        const $list = document.getElementById('rc-laps')
+        if($list)
+        {
+            $list.innerHTML = ''
+            lapTimes.forEach((lap, i) =>
+            {
+                const li   = document.createElement('li')
+                li.className = 'rc-lap-row'
+                if(lap.invalid)                           li.classList.add('rc-lap-invalid')
+                else if(!lap.invalid && lap.ms === bestMs) li.classList.add('rc-lap-best')
+
+                const num  = document.createElement('span')
+                num.className   = 'rc-lap-num'
+                num.textContent = `LAP ${i + 1}`
+
+                const time = document.createElement('span')
+                time.className   = 'rc-lap-time'
+                time.textContent = lap.invalid ? 'INVALID' : LapTimer.fmt(lap.ms)
+
+                li.appendChild(num)
+                li.appendChild(time)
+                $list.appendChild(li)
+            })
+        }
+
+        const $sub    = document.getElementById('rc-sub')
+        const $footer = document.getElementById('rc-footer')
+        if($sub)    $sub.textContent    = bestMs ? `Best  ${LapTimer.fmt(bestMs)}` : ''
+        if($footer) $footer.textContent = validTimes.length ? `Total  ${LapTimer.fmt(totalMs)}` : ''
+
+        const $again = document.getElementById('rc-again')
+        if($again) $again.onclick = () => window.location.reload()
+
+        $overlay.classList.add('visible')
+    }
+
     _setupOffTrackDetection()
     {
         const center = this.track.centerPath
         if(!center || center.length === 0) return
 
-        const HALF_WIDTH   = 7       // track half-width (14m / 2)
-        const BUFFER       = 2.5     // extra margin before drag starts
-        const THRESHOLD_SQ = (HALF_WIDTH + BUFFER) ** 2
+        const HALF_WIDTH    = 7       // track half-width (14m / 2)
+        const BUFFER        = 2.5     // extra margin before drag starts
+        const THRESHOLD_SQ  = (HALF_WIDTH + BUFFER) ** 2
+        const INVALID_MS    = 3000    // continuous off-track time before lap invalidation
 
         const $note  = document.getElementById('hud-lap-note')
-        let offTrack = false
-        let noteShown = false
+        let offTrack    = false
+        let noteShown   = false
+        let offTrackMs  = 0
+        let lapMarkedInvalid = false
+
+        this.lapTimer.on('lap', () => { offTrackMs = 0; lapMarkedInvalid = false })
 
         this.time.on('tick', () =>
         {
@@ -622,24 +727,44 @@ export default class World
             const wasOff = offTrack
             offTrack = minSq > THRESHOLD_SQ
 
+            const dt = Math.min(this.time.delta, 60)
+
             if(offTrack)
             {
-                const dt     = Math.min(this.time.delta, 60)
                 // Halve speed every 2 seconds off-track
                 const factor = Math.pow(0.5, dt / 2000)
                 body.velocity.x *= factor
                 body.velocity.y *= factor
+
+                // Accumulate and check for invalidation
+                offTrackMs += dt
+                if(!lapMarkedInvalid && offTrackMs >= INVALID_MS)
+                {
+                    lapMarkedInvalid = true
+                    this.lapTimer.invalidate()
+                    if($note)
+                    {
+                        $note.textContent   = '⛔ LAP INVALID'
+                        $note.style.color   = '#e74c3c'
+                        $note.style.opacity = '1'
+                        noteShown = true
+                    }
+                }
+            }
+            else
+            {
+                offTrackMs = 0  // reset counter when back on track
             }
 
-            // Show/hide "OFF TRACK" note
-            if(offTrack && !wasOff && $note)
+            // Show/hide "OFF TRACK" note (only if lap not already marked invalid)
+            if(offTrack && !wasOff && !lapMarkedInvalid && $note)
             {
                 $note.textContent   = '⚠ OFF TRACK'
                 $note.style.color   = '#e67e22'
                 $note.style.opacity = '1'
                 noteShown = true
             }
-            else if(!offTrack && wasOff && noteShown && $note)
+            else if(!offTrack && wasOff && noteShown && !lapMarkedInvalid && $note)
             {
                 $note.style.opacity = '0'
                 noteShown = false
@@ -748,7 +873,6 @@ export default class World
                     pods.forEach(p => p.className = 'sl-pod')
                     if(this.lapTimer)  this.lapTimer.start()
                     if(this.hud)       this.hud.show()
-                    if(this.ghostLap)  this.ghostLap.begin()
                 }, 560)
             }, 600)
         }, allRedAt + 400)

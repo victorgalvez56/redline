@@ -24,13 +24,20 @@ export default class HUD
 
         this._noteTimer = null
         this._lbTimer   = null
+        this._lapSummaryTimer = null
+
+        // Track per-lap sector times and whether each was a new best
+        this._lastSectorMs      = [null, null]
+        this._lapSectorIsNewBest = [false, false]
+        this._prevBestLap       = this.lapTimer.getBestMs()
+        this._lapMaxSpeed       = 0
 
         this._times = this._loadTimes()
         this._renderLeaderboard()
 
-        this.lapTimer.on('lap', ({ lapMs, lapCount, isNewBest }) =>
+        this.lapTimer.on('lap', ({ lapMs, lapCount, isNewBest, invalid }) =>
         {
-            this._onLap(lapMs, lapCount, isNewBest)
+            this._onLap(lapMs, lapCount, isNewBest, invalid)
         })
 
         this.lapTimer.on('sector', ({ sectorIdx, sectorMs, isNewBest, bestMs }) =>
@@ -44,6 +51,8 @@ export default class HUD
         if(this.$hud)   this.$hud.style.display   = 'flex'
         if(this.$speed) this.$speed.style.display = 'block'
         if(this.$gear)  this.$gear.style.display  = 'block'
+        const $st = document.getElementById('sector-timing')
+        if($st) $st.style.display = 'block'
     }
 
     update()
@@ -83,6 +92,7 @@ export default class HUD
             const vel = this.physics.car.chassis.body.velocity
             const kmh = Math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2) * 3.6
             this.$speed.textContent = `${Math.round(kmh)}`
+            if(this.lapTimer._active && kmh > this._lapMaxSpeed) this._lapMaxSpeed = kmh
 
             if(this.$gear)
             {
@@ -156,24 +166,43 @@ export default class HUD
 
     // ── Lap event ─────────────────────────────────────────────────────────
 
-    _onLap(lapMs, lapCount, isNewBest)
+    _onLap(lapMs, lapCount, isNewBest, invalid)
     {
         if(this.$lap) this.$lap.textContent = `LAP ${lapCount + 1}`
 
-        this._recordTime(lapMs)
-        this._renderLeaderboard()
-        this._showLeaderboard()
+        const prevBest = this._prevBestLap
+        this._prevBestLap = this.lapTimer.getBestMs()
 
-        const msg   = isNewBest
-            ? `🏆  NEW BEST!  ${LapTimer.fmt(lapMs)}`
-            : `Lap ${lapCount}  ·  ${LapTimer.fmt(lapMs)}`
-        this._showNote(msg, isNewBest ? '#f1c40f' : '#fff')
+        if(!invalid)
+        {
+            this._recordTime(lapMs)
+            this._renderLeaderboard()
+            this._showLeaderboard()
+        }
+
+        const msg = invalid
+            ? '⛔  LAP INVALID'
+            : isNewBest
+                ? `🏆  NEW BEST!  ${LapTimer.fmt(lapMs)}`
+                : `Lap ${lapCount}  ·  ${LapTimer.fmt(lapMs)}`
+        const color = invalid ? '#e74c3c' : isNewBest ? '#f1c40f' : '#fff'
+        this._showNote(msg, color)
 
         if(isNewBest && this.$time)
         {
             this.$time.style.color = '#f1c40f'
             setTimeout(() => { if(this.$time) this.$time.style.color = '' }, 1800)
         }
+
+        // Fill S3 in sector bar, then schedule a reset
+        const s3Ms = (this._lastSectorMs[0] !== null && this._lastSectorMs[1] !== null)
+            ? lapMs - this._lastSectorMs[0] - this._lastSectorMs[1]
+            : null
+        const $s3t = document.getElementById('st-s3-time')
+        if($s3t && s3Ms !== null) { $s3t.textContent = LapTimer.fmt(s3Ms); $s3t.style.color = invalid ? '#e74c3c' : '#fff' }
+        setTimeout(() => this._resetSectorBar(), 5500)
+
+        this._showLapSummary(lapMs, isNewBest, prevBest, invalid)
     }
 
     showBoost()
@@ -183,6 +212,31 @@ export default class HUD
 
     _onSector(idx, sectorMs, isNewBest, bestMs)
     {
+        this._lastSectorMs[idx]       = sectorMs
+        this._lapSectorIsNewBest[idx] = isNewBest
+
+        // Update sector timing bar
+        const $t = document.getElementById(`st-s${idx + 1}-time`)
+        const $d = document.getElementById(`st-s${idx + 1}-delta`)
+        if($t) { $t.textContent = LapTimer.fmt(sectorMs); $t.style.color = isNewBest ? '#cc88ff' : '#fff' }
+        if($d)
+        {
+            if(isNewBest)
+            {
+                $d.textContent = 'BEST'; $d.style.color = '#cc88ff'
+            }
+            else if(bestMs !== null)
+            {
+                const d = sectorMs - bestMs
+                $d.textContent = LapTimer.fmtSplit(d)
+                $d.style.color = d <= 0 ? '#2ecc71' : '#e74c3c'
+            }
+            else
+            {
+                $d.textContent = ''; $d.style.color = ''
+            }
+        }
+
         const label = `S${idx + 1}`
         if(isNewBest)
         {
@@ -201,6 +255,17 @@ export default class HUD
         }
     }
 
+    _resetSectorBar()
+    {
+        for(let i = 1; i <= 3; i++)
+        {
+            const $t = document.getElementById(`st-s${i}-time`)
+            const $d = document.getElementById(`st-s${i}-delta`)
+            if($t) { $t.textContent = '--:--.---'; $t.style.color = '' }
+            if($d) { $d.textContent = ''; $d.style.color = '' }
+        }
+    }
+
     _showNote(text, color)
     {
         if(!this.$note) return
@@ -212,5 +277,82 @@ export default class HUD
         {
             if(this.$note) this.$note.style.opacity = '0'
         }, 3200)
+    }
+
+    // ── Lap summary card ──────────────────────────────────────────────────
+
+    _showLapSummary(lapMs, isNewBest, prevBestMs, invalid = false)
+    {
+        const $card = document.getElementById('lap-summary')
+        if(!$card) return
+
+        const $title = document.getElementById('lap-summary-title')
+        if($title) $title.textContent = invalid ? '⛔ LAP INVALID' : 'Lap complete'
+
+        const s1Ms = this._lastSectorMs[0]
+        const s2Ms = this._lastSectorMs[1]
+        const s3Ms = (s1Ms !== null && s2Ms !== null) ? lapMs - s1Ms - s2Ms : null
+
+        const setVal = (id, ms, color) =>
+        {
+            const el = document.getElementById(id)
+            if(!el) return
+            el.textContent  = ms !== null ? LapTimer.fmt(ms) : '--:--.---'
+            el.style.color  = color || '#fff'
+        }
+
+        const setDelta = (id, ms, bestMs) =>
+        {
+            const el = document.getElementById(id)
+            if(!el) return
+            if(ms === null || bestMs === null) { el.textContent = ''; return }
+            const delta = ms - bestMs
+            el.textContent = LapTimer.fmtSplit(delta)
+            el.style.color  = delta <= 0 ? '#2ecc71' : '#e74c3c'
+        }
+
+        const sg = this.lapTimer._sectorGates
+
+        const $spd = document.getElementById('ls-speed')
+        if($spd) $spd.textContent = this._lapMaxSpeed > 0 ? `${Math.round(this._lapMaxSpeed)}` : '---'
+        this._lapMaxSpeed = 0
+
+        setVal('ls-s1', s1Ms, this._lapSectorIsNewBest[0] ? '#cc88ff' : '#fff')
+        setVal('ls-s2', s2Ms, this._lapSectorIsNewBest[1] ? '#cc88ff' : '#fff')
+        setVal('ls-s3', s3Ms, '#fff')
+        setVal('ls-total', lapMs, isNewBest ? '#f1c40f' : '#fff')
+
+        // Sector deltas: compare against best AFTER this lap (which may have been updated)
+        // If this sector was a new best, delta would be 0 — hide it to avoid confusion
+        if(this._lapSectorIsNewBest[0])
+            { const el = document.getElementById('ls-ds1'); if(el) { el.textContent = 'BEST'; el.style.color = '#cc88ff' } }
+        else
+            setDelta('ls-ds1', s1Ms, sg[0]?.bestMs ?? null)
+
+        if(this._lapSectorIsNewBest[1])
+            { const el = document.getElementById('ls-ds2'); if(el) { el.textContent = 'BEST'; el.style.color = '#cc88ff' } }
+        else
+            setDelta('ls-ds2', s2Ms, sg[1]?.bestMs ?? null)
+
+        const $ds3 = document.getElementById('ls-ds3')
+        if($ds3) { $ds3.textContent = ''; }
+
+        if(isNewBest)
+        {
+            const $dtotal = document.getElementById('ls-dtotal')
+            if($dtotal) { $dtotal.textContent = 'BEST'; $dtotal.style.color = '#f1c40f' }
+        }
+        else
+        {
+            setDelta('ls-dtotal', lapMs, prevBestMs)
+        }
+
+        // Reset for next lap
+        this._lastSectorMs       = [null, null]
+        this._lapSectorIsNewBest = [false, false]
+
+        $card.classList.add('visible')
+        clearTimeout(this._lapSummaryTimer)
+        this._lapSummaryTimer = setTimeout(() => $card.classList.remove('visible'), 5500)
     }
 }

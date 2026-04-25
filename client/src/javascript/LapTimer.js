@@ -39,11 +39,18 @@ export default class LapTimer extends EventEmitter
     start()
     {
         this._active        = true
+        this._invalid       = false
         this._lapStart      = performance.now()
         this._lastSign      = null
         this._currentSector = 0
         this._sectorStart   = performance.now()
         for(const sg of this._sectorGates) sg.lastSign = null
+    }
+
+    // Mark current lap as invalid (won't be saved as best, won't go to leaderboard)
+    invalidate()
+    {
+        this._invalid = true
     }
 
     stop()
@@ -110,22 +117,25 @@ export default class LapTimer extends EventEmitter
             this._lapStart      = now
             this._sectorStart   = now
             this._currentSector = 0
+            this._invalid       = false
             for(const sg of this._sectorGates) sg.lastSign = null
             return
         }
 
         this._lapCount++
         const lapMs     = elapsed
-        const isNewBest = this._bestLap === null || lapMs < this._bestLap
+        const invalid   = this._invalid
+        const isNewBest = !invalid && (this._bestLap === null || lapMs < this._bestLap)
 
         if(isNewBest) this._saveBest(lapMs)
 
         this._lapStart      = now
         this._sectorStart   = now
         this._currentSector = 0
+        this._invalid       = false
         for(const sg of this._sectorGates) sg.lastSign = null
 
-        this.trigger('lap', [{ lapMs, lapCount: this._lapCount, isNewBest, bestMs: this._bestLap }])
+        this.trigger('lap', [{ lapMs, lapCount: this._lapCount, isNewBest, bestMs: this._bestLap, invalid }])
     }
 
     getCurrentMs()
