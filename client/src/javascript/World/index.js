@@ -17,6 +17,9 @@ import LapTimer from '../LapTimer.js'
 import HUD from '../HUD.js'
 import SkidMarks from './SkidMarks.js'
 import Environment from './Environment.js'
+import SmokeParticles from './SmokeParticles.js'
+import GhostLap from './GhostLap.js'
+import BoostPads from './BoostPads.js'
 
 export default class World
 {
@@ -83,7 +86,11 @@ export default class World
         this.setLapTimer()
         this.setHUD()
         this.setSkidMarks()
+        this.setSmokeParticles()
+        this.setGhostLap()
+        this.setBoostPads()
         this.setEnvironment()
+        this._setupRespawnFeedback()
         this._setupCameraEffects()
     }
 
@@ -126,7 +133,7 @@ export default class World
                 window.setTimeout(() => overlay.show(), 1500)
             }
 
-            // Countdown then start lap timer
+            // Start lights then start lap timer
             window.setTimeout(() => this._showCountdown(), 800)
         }
 
@@ -447,6 +454,49 @@ export default class World
         this.time.on('tick', () => { this.skidMarks.update() })
     }
 
+    setSmokeParticles()
+    {
+        this.smokeParticles = new SmokeParticles({ physics: this.physics, time: this.time })
+        this.scene.add(this.smokeParticles.container)
+        this.time.on('tick', () => { this.smokeParticles.update() })
+    }
+
+    setGhostLap()
+    {
+        this.ghostLap = new GhostLap({
+            physics:  this.physics,
+            time:     this.time,
+            lapTimer: this.lapTimer,
+        })
+        this.scene.add(this.ghostLap._container)
+        this.time.on('tick', () => { this.ghostLap.update() })
+    }
+
+    setBoostPads()
+    {
+        this.boostPads = new BoostPads({
+            physics:  this.physics,
+            time:     this.time,
+            onBoost:  () => this.hud?.showBoost(),
+        })
+        this.container.add(this.boostPads.container)
+        this.time.on('tick', () => { this.boostPads.update() })
+    }
+
+    _setupRespawnFeedback()
+    {
+        const $flash = document.getElementById('respawn-flash')
+
+        this.controls.on('action', (name) =>
+        {
+            if(name !== 'reset' || !$flash) return
+            $flash.style.animation = 'none'
+            void $flash.offsetWidth
+            $flash.style.animation = 'respawn-flash 0.5s ease-out forwards'
+            this._shakeCamera()
+        })
+    }
+
     setEnvironment()
     {
         this.environment = new Environment({
@@ -505,39 +555,39 @@ export default class World
 
     _showCountdown()
     {
-        const $overlay = document.getElementById('countdown-overlay')
-        const $num     = document.getElementById('countdown-num')
-        if(!$overlay || !$num) return
+        const $overlay = document.getElementById('start-lights-overlay')
+        const pods     = [0, 1, 2, 3, 4].map(i => document.getElementById(`sl-${i}`))
+        if(!$overlay || pods.some(p => !p)) return
 
-        $overlay.style.display = 'flex'
+        $overlay.style.display    = 'block'
+        $overlay.style.animation  = ''
+        $overlay.style.opacity    = '1'
+        pods.forEach(p => p.className = 'sl-pod')
 
-        const seq = ['3', '2', '1', 'GO!']
-        let i = 0
-
-        const step = () =>
+        // Light each pod red 600ms apart
+        pods.forEach((pod, i) =>
         {
-            $num.textContent       = seq[i]
-            $num.style.animation   = 'none'
-            void $num.offsetWidth  // force reflow to restart animation
-            $num.style.animation   = 'countdown-pop 0.95s ease-out forwards'
+            setTimeout(() => pod.classList.add('red'), i * 600)
+        })
 
-            i++
-            if(i < seq.length)
+        // After all are red, hold briefly then go green and fade
+        const allRedAt = pods.length * 600
+        setTimeout(() =>
+        {
+            pods.forEach(p => { p.classList.remove('red'); p.classList.add('green') })
+
+            setTimeout(() =>
             {
-                setTimeout(step, 1000)
-            }
-            else
-            {
+                $overlay.style.animation = 'sl-fade 0.55s ease-out forwards'
                 setTimeout(() =>
                 {
                     $overlay.style.display = 'none'
-                    // Start lap timer and show HUD after GO!
-                    if(this.lapTimer) this.lapTimer.start()
-                    if(this.hud)      this.hud.show()
-                }, 950)
-            }
-        }
-
-        step()
+                    pods.forEach(p => p.className = 'sl-pod')
+                    if(this.lapTimer)  this.lapTimer.start()
+                    if(this.hud)       this.hud.show()
+                    if(this.ghostLap)  this.ghostLap.begin()
+                }, 560)
+            }, 600)
+        }, allRedAt + 400)
     }
 }

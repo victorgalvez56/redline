@@ -62,6 +62,10 @@ export default class Controls extends EventEmitter
 
         this.keyboard.events.keyDown = (_event) =>
         {
+            // Don't steal keys from text inputs (chat, lobby forms)
+            const tag = document.activeElement?.tagName
+            if(tag === 'INPUT' || tag === 'TEXTAREA') return
+
             switch(_event.code)
             {
                 case 'ArrowUp':

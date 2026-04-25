@@ -372,28 +372,58 @@
             white-space: nowrap;
         }
 
-        /* Countdown overlay */
-        #countdown-overlay {
+        /* Start lights overlay */
+        #start-lights-overlay {
             position: fixed;
-            inset: 0;
+            top: 72px;
+            left: 50%;
+            transform: translateX(-50%);
             display: none;
-            align-items: center;
-            justify-content: center;
             z-index: 700;
             pointer-events: none;
         }
-        #countdown-num {
-            font-family: 'Comic Neue', monospace;
-            font-size: 130px;
-            font-weight: 700;
-            color: #fff;
-            text-shadow: 0 0 80px rgba(255,255,255,0.35);
+        #start-lights-bar {
+            display: flex;
+            gap: 10px;
+            background: rgba(0,0,0,0.82);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 14px 18px;
+            backdrop-filter: blur(6px);
         }
-        @keyframes countdown-pop {
-            0%   { transform: scale(1.9); opacity: 0; }
-            25%  { transform: scale(1.0); opacity: 1; }
-            70%  { transform: scale(1.0); opacity: 1; }
-            100% { transform: scale(0.6); opacity: 0; }
+        .sl-pod {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #110000;
+            border: 2px solid rgba(255,255,255,0.07);
+            transition: background 0.08s, box-shadow 0.08s;
+        }
+        .sl-pod.red {
+            background: #cc0000;
+            box-shadow: 0 0 18px #ff2200, 0 0 36px rgba(255,34,0,0.35);
+        }
+        .sl-pod.green {
+            background: #00cc44;
+            box-shadow: 0 0 18px #00ff55, 0 0 36px rgba(0,255,85,0.35);
+        }
+        @keyframes sl-fade {
+            from { opacity: 1; }
+            to   { opacity: 0; }
+        }
+
+        /* Respawn flash */
+        #respawn-flash {
+            position: fixed;
+            inset: 0;
+            background: rgba(220, 40, 40, 0.55);
+            pointer-events: none;
+            z-index: 800;
+            opacity: 0;
+        }
+        @keyframes respawn-flash {
+            0%   { opacity: 0.75; }
+            100% { opacity: 0; }
         }
 
     </style>
@@ -660,9 +690,18 @@
     <!-- Lap completion note -->
     <div id="hud-lap-note"></div>
 
-    <!-- Countdown overlay -->
-    <div id="countdown-overlay">
-        <div id="countdown-num"></div>
+    <!-- Respawn flash -->
+    <div id="respawn-flash"></div>
+
+    <!-- Start lights overlay (F1-style) -->
+    <div id="start-lights-overlay">
+        <div id="start-lights-bar">
+            <div class="sl-pod" id="sl-0"></div>
+            <div class="sl-pod" id="sl-1"></div>
+            <div class="sl-pod" id="sl-2"></div>
+            <div class="sl-pod" id="sl-3"></div>
+            <div class="sl-pod" id="sl-4"></div>
+        </div>
     </div>
 
     <!-- Toast for join/leave events -->

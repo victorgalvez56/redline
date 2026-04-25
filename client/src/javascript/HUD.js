@@ -158,6 +158,11 @@ export default class HUD
         }
     }
 
+    showBoost()
+    {
+        this._showNote('⚡ BOOST!', '#ffaa00')
+    }
+
     _showNote(text, color)
     {
         if(!this.$note) return
