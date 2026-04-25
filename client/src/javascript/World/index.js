@@ -19,6 +19,9 @@ import SkidMarks from './SkidMarks.js'
 import Environment from './Environment.js'
 import SmokeParticles from './SmokeParticles.js'
 import BoostPads from './BoostPads.js'
+import Weapons from './Weapons.js'
+import HealthSystem from './HealthSystem.js'
+import CombatPickups from './CombatPickups.js'
 
 export default class World
 {
@@ -95,6 +98,7 @@ export default class World
         this._setupMuteButton()
         this._setupCameraEffects()
         this._setupRaceEnd()
+        this.setCombat()
     }
 
     setReveal()
@@ -622,6 +626,163 @@ export default class World
             this.camera.target.x = lx
             this.camera.target.y = ly
         })
+    }
+
+    // ── Combat (Twisted Metal mode) ──────────────────────────────────────────
+
+    setCombat()
+    {
+        // ── Weapon system ──
+        this.weapons = new Weapons({
+            scene:            this.scene,
+            physics:          this.physics,
+            centerPath:       this.track?.centerPath || [],
+            remoteCarManager: this.remoteCarManager || null,
+            onHitCar: (id, dmg) =>
+            {
+                if(this.network) this.network.sendCombatDamage?.(id, dmg)
+            },
+            onFire: () =>
+            {
+                this.sounds?.play('carHit', 12)
+            },
+        })
+
+        // ── Health system ──
+        this.healthSystem = new HealthSystem({
+            physics:  this.physics,
+            spawnPos: this._serverSpawnPos || { x: 5, y: -35 },
+        })
+
+        // ── Pickups ──
+        this.combatPickups = new CombatPickups({
+            scene:   this.scene,
+            physics: this.physics,
+            onCollect: ({ type, value }) =>
+            {
+                if(type === 'ammo')
+                {
+                    this.weapons.addAmmo(value)
+                    this._showCombatPickup(`+${value} AMMO`, '#ff8800')
+                }
+                if(type === 'health')
+                {
+                    this.healthSystem.heal(value)
+                    this._showCombatPickup(`+${value} HP`, '#2ecc71')
+                }
+                this.sounds?.play('uiArea', 0)
+                this._updateCombatHUD()
+            },
+        })
+
+        // ── Controls: F key fires ──
+        this.controls.on('action', (name) =>
+        {
+            if(name !== 'fire') return
+            const ok = this.weapons.fire()
+            if(!ok && this.weapons.ammo <= 0)
+                this._showCombatPickup('NO AMMO', '#e74c3c')
+            if(ok) this._updateCombatHUD()
+        })
+
+        // ── Health events ──
+        this.healthSystem.on('damage', ({ hp }) =>
+        {
+            this._updateCombatHUD()
+            this._shakeCamera()
+            this._flashDamage()
+        })
+
+        this.healthSystem.on('healed', () => { this._updateCombatHUD() })
+
+        this.healthSystem.on('death', () =>
+        {
+            this._updateCombatHUD()
+            const $ov = document.getElementById('death-overlay')
+            if($ov) $ov.classList.add('visible')
+            let t = 3
+            const $timer = document.getElementById('death-timer')
+            const tick = () =>
+            {
+                if($timer) $timer.textContent = t
+                if(t > 0) { t--; setTimeout(tick, 1000) }
+            }
+            tick()
+        })
+
+        this.healthSystem.on('respawn', () =>
+        {
+            this._updateCombatHUD()
+            const $ov = document.getElementById('death-overlay')
+            if($ov) $ov.classList.remove('visible')
+        })
+
+        // ── Receive damage from multiplayer ──
+        if(this.network)
+        {
+            this.network.on('player:combatDamage', ({ amount }) =>
+            {
+                this.healthSystem.takeDamage(amount)
+            })
+        }
+
+        // ── Show combat HUD ──
+        const $hp  = document.getElementById('hp-container')
+        const $wpn = document.getElementById('weapon-status')
+        if($hp)  $hp.style.display  = 'block'
+        if($wpn) $wpn.style.display = 'block'
+        this._updateCombatHUD()
+
+        // ── Tick ──
+        this.time.on('tick', () =>
+        {
+            const dt = Math.min(this.time.delta, 60)
+            this.weapons.update(dt)
+            this.combatPickups.update(dt)
+        })
+    }
+
+    _updateCombatHUD()
+    {
+        const hp   = this.healthSystem?.hp ?? 100
+        const ammo = this.weapons?.ammo   ?? 0
+
+        const $fill  = document.getElementById('hp-fill')
+        const $val   = document.getElementById('hp-val')
+        const $ammo  = document.getElementById('weapon-ammo')
+
+        if($fill)
+        {
+            $fill.style.width = `${hp}%`
+            $fill.style.background =
+                hp > 60 ? '#2ecc71' :
+                hp > 30 ? '#f39c12' : '#e74c3c'
+        }
+        if($val)  $val.textContent  = hp
+        if($ammo) $ammo.textContent = `×${ammo}`
+    }
+
+    _flashDamage()
+    {
+        const $flash = document.getElementById('respawn-flash')
+        if(!$flash) return
+        $flash.style.animation = 'none'
+        void $flash.offsetWidth
+        $flash.style.animation = 'respawn-flash 0.4s ease-out forwards'
+    }
+
+    _showCombatPickup(text, color)
+    {
+        const $note = document.getElementById('hud-lap-note')
+        if(!$note) return
+        $note.textContent   = text
+        $note.style.color   = color
+        $note.style.opacity = '1'
+        clearTimeout(this._pickupNoteTimer)
+        this._pickupNoteTimer = setTimeout(() =>
+        {
+            if($note) $note.style.opacity = '0'
+        }, 2000)
     }
 
     _setupRaceEnd()

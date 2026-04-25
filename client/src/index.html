@@ -623,6 +623,94 @@
         }
         #rc-again:hover { opacity: 0.82; }
 
+        /* ── Combat HUD ── */
+        #hp-container {
+            display: none;
+            position: fixed;
+            left: 16px;
+            bottom: 80px;
+            font-family: monospace;
+            z-index: 500;
+            pointer-events: none;
+        }
+        #hp-label {
+            font-size: 9px;
+            letter-spacing: 3px;
+            color: rgba(255,255,255,0.35);
+            margin-bottom: 4px;
+        }
+        #hp-bar-wrap {
+            width: 160px;
+            height: 7px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        #hp-fill {
+            height: 100%;
+            width: 100%;
+            background: #2ecc71;
+            border-radius: 4px;
+            transition: width 0.18s, background 0.3s;
+        }
+        #hp-val {
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            margin-top: 3px;
+            letter-spacing: 1px;
+        }
+
+        #weapon-status {
+            display: none;
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: bold;
+            color: rgba(255,255,255,0.7);
+            z-index: 500;
+            pointer-events: none;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 6px 18px;
+            letter-spacing: 2px;
+            display: none;
+        }
+        #weapon-ammo { color: #ff8800; }
+        #weapon-empty { color: #e74c3c; }
+
+        #death-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(180,0,0,0.35);
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 850;
+            font-family: monospace;
+            text-align: center;
+            pointer-events: none;
+        }
+        #death-overlay.visible { display: flex; }
+        #death-title {
+            font-size: 42px;
+            font-weight: bold;
+            color: #fff;
+            letter-spacing: 4px;
+            text-shadow: 0 0 40px rgba(255,80,80,0.8);
+            margin-bottom: 12px;
+        }
+        #death-sub {
+            font-size: 14px;
+            color: rgba(255,255,255,0.55);
+            letter-spacing: 3px;
+        }
+
         /* Sector timing sidebar (bottom-left, below minimap) */
         #sector-timing {
             display: none;
@@ -931,6 +1019,24 @@
 
     <!-- Respawn flash -->
     <div id="respawn-flash"></div>
+
+    <!-- HP bar -->
+    <div id="hp-container">
+        <div id="hp-label">HP</div>
+        <div id="hp-bar-wrap"><div id="hp-fill"></div></div>
+        <div id="hp-val">100</div>
+    </div>
+
+    <!-- Weapon / ammo counter -->
+    <div id="weapon-status">
+        🚀 MISSILE &nbsp;<span id="weapon-ammo">×10</span>
+    </div>
+
+    <!-- Death overlay -->
+    <div id="death-overlay">
+        <div id="death-title">💥 DESTROYED</div>
+        <div id="death-sub">Respawning in <span id="death-timer">3</span>...</div>
+    </div>
 
     <!-- Sector timing sidebar -->
     <div id="sector-timing">

@@ -107,9 +107,9 @@ export default class Controls extends EventEmitter
                     this._sendInput()
                     break
 
-                // case ' ':
-                //     this.jump(true)
-                //     break
+                case 'KeyF':
+                    this.trigger('action', ['fire'])
+                    break
             }
         }
 
