@@ -241,7 +241,8 @@ export default class Controls extends EventEmitter
         this.sizes.on('resize', updateCenter)
         requestAnimationFrame(updateCenter)
 
-        // Convert deflection → 4-way booleans on each tick
+        // Convert horizontal deflection → steering. Y-axis is ignored
+        // because forward/backward are dedicated buttons (GAS / BRAKE).
         this.time.on('tick', () =>
         {
             if(!joy.active) return
@@ -252,23 +253,18 @@ export default class Controls extends EventEmitter
 
             const left  = dx < -DZ
             const right = dx >  DZ
-            const up    = dy < -DZ      // touch above center = forward
-            const down  = dy >  DZ
 
             const changed =
-                left  !== this.actions.left  ||
-                right !== this.actions.right ||
-                up    !== this.actions.up    ||
-                down  !== this.actions.down
+                left  !== this.actions.left ||
+                right !== this.actions.right
 
             this.actions.left  = left
             this.actions.right = right
-            this.actions.up    = up
-            this.actions.down  = down
 
             if(changed) this._sendInput()
 
-            // Cursor follows touch, capped to 50px radius
+            // Cursor still follows the full 2D touch — feels more analog
+            // than a slider, even though only X-axis affects the car
             const dist = Math.min(Math.hypot(dx, dy), 50)
             const ang  = Math.atan2(dy, dx)
             joy.$cursor.style.transform =
@@ -308,10 +304,8 @@ export default class Controls extends EventEmitter
             joy.touchId = null
             joy.$cursor.style.transform = 'translate(0,0)'
 
-            if(this.actions.up || this.actions.down || this.actions.left || this.actions.right)
+            if(this.actions.left || this.actions.right)
             {
-                this.actions.up    = false
-                this.actions.down  = false
                 this.actions.left  = false
                 this.actions.right = false
                 this._sendInput()
@@ -321,19 +315,19 @@ export default class Controls extends EventEmitter
         document.addEventListener('touchcancel', releaseJoy)
     }
 
-    // ── Right-thumb action buttons (brake / boost / jump / fire) ─────────
+    // ── Right-thumb action buttons (gas / brake / boost / jump / fire) ──
+    // Text-only labels (no emoji) for a cleaner, intentional look. Each
+    // button is a square pill with the action name in mono uppercase.
     _buildTouchButtons()
     {
-        const makeHold = (id, label, icon, slot, onPress, onRelease, accent) =>
+        const makeHold = (id, label, slot, onPress, onRelease, accent) =>
         {
             const $b = document.createElement('button')
             $b.className = 'rl-touch-btn'
             $b.id = `rl-touch-${id}`
             $b.dataset.slot = String(slot)
             if(accent) $b.dataset.accent = accent
-            $b.innerHTML =
-                `<span class="rl-touch-btn-icon">${icon}</span>` +
-                `<span class="rl-touch-btn-label">${label}</span>`
+            $b.textContent = label
             this.touch.$root.appendChild($b)
 
             $b.addEventListener('touchstart', (e) =>
@@ -349,7 +343,7 @@ export default class Controls extends EventEmitter
             return $b
         }
 
-        const makeTap = (id, label, icon, slot, onTap, accent, hidden = false) =>
+        const makeTap = (id, label, slot, onTap, accent, hidden = false) =>
         {
             const $b = document.createElement('button')
             $b.className = 'rl-touch-btn rl-touch-btn-tap'
@@ -357,9 +351,7 @@ export default class Controls extends EventEmitter
             $b.dataset.slot = String(slot)
             if(accent) $b.dataset.accent = accent
             if(hidden) $b.style.display = 'none'
-            $b.innerHTML =
-                `<span class="rl-touch-btn-icon">${icon}</span>` +
-                `<span class="rl-touch-btn-label">${label}</span>`
+            $b.textContent = label
             this.touch.$root.appendChild($b)
 
             $b.addEventListener('touchstart', (e) =>
@@ -373,23 +365,28 @@ export default class Controls extends EventEmitter
         }
 
         // Slot 0 = bottom (most reachable). Stack rises upward.
-        // Using emoji glyphs because unicode symbols (⊘ ⚡ ⇧) fall back to
-        // generic triangles on some Android system fonts.
-        this.touch.brake = makeHold('brake', 'BRAKE', '🛑', 0,
+
+        // GAS — primary forward control (was joystick Y-axis previously)
+        this.touch.gas = makeHold('gas', 'GAS', 0,
+            () => { this.actions.up = true;  this._sendInput() },
+            () => { this.actions.up = false; this._sendInput() },
+            'redline')
+
+        this.touch.brake = makeHold('brake', 'BRAKE', 1,
             () => { this.actions.brake = true;  this._sendInput() },
             () => { this.actions.brake = false; this._sendInput() })
 
-        this.touch.boost = makeHold('boost', 'BOOST', '🔥', 1,
+        this.touch.boost = makeHold('boost', 'BOOST', 2,
             () => { this.actions.boost = true;  this._sendInput() },
             () => { this.actions.boost = false; this._sendInput() },
             'amber')
 
-        this.touch.jump = makeTap('jump', 'JUMP', '⬆️', 2,
+        this.touch.jump = makeTap('jump', 'JUMP', 3,
             () => this.trigger('action', ['jump']),
             'cyan')
 
-        // Fire — combat-mode-only. World.setCombat calls touch.showFire().
-        this.touch.fire = makeTap('fire', 'FIRE', '🚀', 3,
+        // Fire — combat-mode-only. World.setCombat calls touch.showFire()
+        this.touch.fire = makeTap('fire', 'FIRE', 4,
             () => this.trigger('action', ['fire']),
             'redline',
             true)

@@ -1264,28 +1264,27 @@
     pointer-events: none;
 }
 
-/* ── Action buttons (right thumb) ─────────────────────────────────────── */
+/* ── Action buttons (right thumb) — text-only, mono uppercase ─────────── */
 .rl-touch-btn {
     position: fixed;
-    right: max(20px, env(safe-area-inset-right));
+    right: max(18px, env(safe-area-inset-right));
     width:  72px;
-    height: 72px;
+    height: 60px;
     background: rgba(8, 8, 15, 0.55);
     -webkit-backdrop-filter: blur(6px);
             backdrop-filter: blur(6px);
-    border: 2px solid rgba(255, 255, 255, 0.18);
-    border-radius: 14px;
+    border: 1.5px solid rgba(255, 255, 255, 0.20);
+    border-radius: 12px;
     color: var(--rl-text);
     font-family: var(--rl-font-mono);
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.18em;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.10em;
+    text-align: center;
 
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
 
     cursor: pointer;
     user-select: none;
@@ -1301,20 +1300,12 @@
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
 }
 
-.rl-touch-btn[data-slot="0"] { bottom: max(20px,  env(safe-area-inset-bottom)); }
-.rl-touch-btn[data-slot="1"] { bottom: calc(max(20px, env(safe-area-inset-bottom)) +  82px); }
-.rl-touch-btn[data-slot="2"] { bottom: calc(max(20px, env(safe-area-inset-bottom)) + 164px); }
-.rl-touch-btn[data-slot="3"] { bottom: calc(max(20px, env(safe-area-inset-bottom)) + 246px); }
-
-.rl-touch-btn-icon {
-    font-size: 22px;
-    line-height: 1;
-    color: var(--rl-text);
-}
-
-.rl-touch-btn-label {
-    color: var(--rl-text-2);
-}
+/* 5 slots — slot 0 at bottom, stack rises 70px per step */
+.rl-touch-btn[data-slot="0"] { bottom: max(18px,  env(safe-area-inset-bottom)); }
+.rl-touch-btn[data-slot="1"] { bottom: calc(max(18px, env(safe-area-inset-bottom)) +  70px); }
+.rl-touch-btn[data-slot="2"] { bottom: calc(max(18px, env(safe-area-inset-bottom)) + 140px); }
+.rl-touch-btn[data-slot="3"] { bottom: calc(max(18px, env(safe-area-inset-bottom)) + 210px); }
+.rl-touch-btn[data-slot="4"] { bottom: calc(max(18px, env(safe-area-inset-bottom)) + 280px); }
 
 /* Active (pressed) state */
 .rl-touch-btn.active {
@@ -1366,19 +1357,25 @@
     #hud-best  { font-size: 9px  !important; margin-top: 2px !important; }
     #hud-delta { font-size: 11px !important; }
 
-    /* Connection pill — top-right, compact */
+    /* Connection pill — top-LEFT, above HP, small + subtle */
     .rl-conn-status {
-        font-size: 10px !important;
-        padding: 4px 10px 4px 8px !important;
-        letter-spacing: 0.15em !important;
-        top: 10px !important;
-        right: 10px !important;
-    }
-
-    /* HP bar (combat) — TOP-LEFT, never bottom (overlaps joystick) */
-    #hp-container {
         position: fixed !important;
         top: 10px !important;
+        left: 10px !important;
+        right: auto !important;
+        font-size: 9px !important;
+        padding: 3px 8px 3px 7px !important;
+        letter-spacing: 0.10em !important;
+        gap: 6px !important;
+        opacity: 0.78;
+        background: rgba(8, 8, 15, 0.4) !important;
+    }
+    .rl-conn-dot { width: 6px !important; height: 6px !important; }
+
+    /* HP bar (combat) — top-left under conn pill */
+    #hp-container {
+        position: fixed !important;
+        top: 32px !important;
         left: 10px !important;
         right: auto !important;
         bottom: auto !important;
@@ -1387,10 +1384,10 @@
     #hp-label    { font-size: 8px !important; letter-spacing: 2px !important; margin-bottom: 3px !important; }
     #hp-val      { font-size: 10px !important; margin-top: 2px !important; }
 
-    /* Weapon ammo — under HP, top-left */
+    /* Weapon ammo — under HP */
     #weapon-status {
         position: fixed !important;
-        top: 50px !important;
+        top: 76px !important;
         left: 10px !important;
         right: auto !important;
         bottom: auto !important;
@@ -1409,40 +1406,42 @@
     }
     #kill-counter .kc-val { font-size: 13px !important; }
 
-    /* Minimap — shrink + top-right under conn pill */
+    /* Minimap — shrunk, top-right corner */
     #mp-minimap {
         width: 110px !important;
         height: 110px !important;
-        top: 46px !important;
+        top: 10px !important;
         left: auto !important;
         right: 10px !important;
     }
 
-    /* Mute + chat: small icon buttons, top-right under minimap row */
+    /* Mute — small circle, top-right next to minimap */
     #btn-mute {
         position: fixed !important;
-        top: 12px !important;
-        right: 158px !important;
-        bottom: auto !important;
-        left: auto !important;
-        width: 30px !important;
-        height: 30px !important;
-        font-size: 13px !important;
-        border-radius: 50% !important;
-    }
-    #chat-toggle {
-        position: fixed !important;
-        top: 162px !important;
+        top: 130px !important;
         right: 10px !important;
         bottom: auto !important;
         left: auto !important;
-        width: 36px !important;
-        height: 36px !important;
-        font-size: 16px !important;
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 13px !important;
+        border-radius: 50% !important;
+    }
+
+    /* Chat — small circle, top-right under mute */
+    #chat-toggle {
+        position: fixed !important;
+        top: 170px !important;
+        right: 10px !important;
+        bottom: auto !important;
+        left: auto !important;
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 14px !important;
     }
     #chat-panel {
         position: fixed !important;
-        top: 204px !important;
+        top: 210px !important;
         right: 10px !important;
         left: 10px !important;
         bottom: auto !important;
@@ -1450,7 +1449,7 @@
         max-height: 220px !important;
     }
     #chat-badge {
-        top: 156px !important;
+        top: 164px !important;
         right: 4px !important;
         bottom: auto !important;
     }
@@ -1470,53 +1469,43 @@
     }
     .ls-val { font-size: 12px !important; }
 
-    /* ── TOUCH BUTTON LABELS — make them readable at small sizes ── */
-    .rl-touch-btn {
-        font-size: 9px !important;
-        font-weight: 600 !important;
-        letter-spacing: 0.15em !important;
-    }
-    .rl-touch-btn-label {
-        color: var(--rl-text) !important;
-        opacity: 0.85;
-    }
-    .rl-touch-btn-icon {
-        font-size: 24px !important;
-    }
 }
 
 /* Ultra-narrow phones (<420px): tighter joystick + button stack */
 @media (max-width: 420px) {
     .rl-touch-joystick {
-        width: 132px !important;
-        height: 132px !important;
-        bottom: 18px !important;
-        left: 14px !important;
+        width: 130px !important;
+        height: 130px !important;
+        bottom: 14px !important;
+        left: 12px !important;
     }
     .rl-touch-joystick-cursor {
-        width: 50px !important;
-        height: 50px !important;
-        margin: -25px 0 0 -25px !important;
+        width: 48px !important;
+        height: 48px !important;
+        margin: -24px 0 0 -24px !important;
     }
     .rl-touch-btn {
         width: 64px !important;
-        height: 64px !important;
-        right: 14px !important;
+        height: 54px !important;
+        right: 12px !important;
+        font-size: 11px !important;
+        letter-spacing: 0.08em !important;
     }
-    .rl-touch-btn[data-slot="0"] { bottom: 18px  !important; }
-    .rl-touch-btn[data-slot="1"] { bottom: 92px  !important; }
-    .rl-touch-btn[data-slot="2"] { bottom: 166px !important; }
-    .rl-touch-btn[data-slot="3"] { bottom: 240px !important; }
-    .rl-touch-btn-icon  { font-size: 20px !important; }
-    .rl-touch-btn-label { font-size: 8px !important; }
+    .rl-touch-btn[data-slot="0"] { bottom: 14px  !important; }
+    .rl-touch-btn[data-slot="1"] { bottom: 76px  !important; }
+    .rl-touch-btn[data-slot="2"] { bottom: 138px !important; }
+    .rl-touch-btn[data-slot="3"] { bottom: 200px !important; }
+    .rl-touch-btn[data-slot="4"] { bottom: 262px !important; }
 }
 
-/* Mobile landscape (short height): drop the chat slightly + tighter button stack */
+/* Mobile landscape (short height): tighter stack so 5 buttons fit */
 @media (max-height: 480px) and (orientation: landscape) {
-    #chat-toggle { top: 140px !important; }
-    #chat-panel  { top: 184px !important; max-height: 180px !important; }
-    .rl-touch-btn[data-slot="0"] { bottom: 14px  !important; }
-    .rl-touch-btn[data-slot="1"] { bottom: 88px  !important; }
-    .rl-touch-btn[data-slot="2"] { bottom: 162px !important; }
-    .rl-touch-btn[data-slot="3"] { bottom: 236px !important; }
+    .rl-touch-btn { height: 50px !important; }
+    .rl-touch-btn[data-slot="0"] { bottom: 12px  !important; }
+    .rl-touch-btn[data-slot="1"] { bottom: 70px  !important; }
+    .rl-touch-btn[data-slot="2"] { bottom: 128px !important; }
+    .rl-touch-btn[data-slot="3"] { bottom: 186px !important; }
+    .rl-touch-btn[data-slot="4"] { bottom: 244px !important; }
+    #chat-toggle { top: 130px !important; }
+    #chat-panel  { top: 170px !important; max-height: 160px !important; }
 }
