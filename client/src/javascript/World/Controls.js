@@ -377,11 +377,29 @@ export default class Controls extends EventEmitter
         }
 
         // Slots 0-3: original Bruno layout. Slots 4-5: new actions.
+        //
+        // Multi-button conflict guard: forward + boost both want actions.up.
+        // If both are held and one releases, naive release would clear up
+        // even though the other is still pressed. Track a Set of "sources"
+        // per directional action and only clear when the set empties.
+        this._upHeldBy   = new Set()
+        this._downHeldBy = new Set()
+
+        const setHeld = (set, source, action, held) =>
+        {
+            if(held) set.add(source); else set.delete(source)
+            const newVal = set.size > 0
+            if(this.actions[action] !== newVal)
+            {
+                this.actions[action] = newVal
+                this._sendInput()
+            }
+        }
 
         // Slot 0 (bottom): backward — triangle rotated 180°
         this.touch.backward = makeIconHold('backward', mobileTriangle, 180, 0,
-            () => { this.actions.down = true;  this.camera?.pan?.reset?.(); this._sendInput() },
-            () => { this.actions.down = false; this._sendInput() })
+            () => { setHeld(this._downHeldBy, 'backward', 'down', true);  this.camera?.pan?.reset?.() },
+            () => { setHeld(this._downHeldBy, 'backward', 'down', false) })
 
         // Slot 1: brake — cross
         this.touch.brake = makeIconHold('brake', mobileCross, 0, 1,
@@ -390,13 +408,24 @@ export default class Controls extends EventEmitter
 
         // Slot 2: forward — triangle (gas pedal)
         this.touch.forward = makeIconHold('forward', mobileTriangle, 0, 2,
-            () => { this.actions.up = true;  this.camera?.pan?.reset?.(); this._sendInput() },
-            () => { this.actions.up = false; this._sendInput() })
+            () => { setHeld(this._upHeldBy, 'forward', 'up', true);  this.camera?.pan?.reset?.() },
+            () => { setHeld(this._upHeldBy, 'forward', 'up', false) })
 
-        // Slot 3: boost — double triangle
+        // Slot 3: boost — double triangle (boost = up + boost)
         this.touch.boost = makeIconHold('boost', mobileDoubleTriangle, 0, 3,
-            () => { this.actions.up = true;  this.actions.boost = true;  this.camera?.pan?.reset?.(); this._sendInput() },
-            () => { this.actions.up = false; this.actions.boost = false; this._sendInput() },
+            () =>
+            {
+                setHeld(this._upHeldBy, 'boost', 'up', true)
+                this.actions.boost = true
+                this.camera?.pan?.reset?.()
+                this._sendInput()
+            },
+            () =>
+            {
+                setHeld(this._upHeldBy, 'boost', 'up', false)
+                this.actions.boost = false
+                this._sendInput()
+            },
             'amber')
 
         // Slot 4: jump (new) — text label, cyan accent
