@@ -408,15 +408,10 @@ export default class Car
 
         window.addEventListener('keydown', (_event) =>
         {
-            // Play horn sound
+            // Play horn sound (no longer triggers jump — Space is the jump key)
             if(_event.code === 'KeyH')
             {
-                if(this.time.elapsed - this.klaxon.lastTime > 400)
-                {
-                    this.physics.car.jump(false, 150)
-                    this.klaxon.lastTime = this.time.elapsed
-                }
-
+                this.klaxon.lastTime = this.time.elapsed
                 this.sounds.play(Math.random() < 0.002 ? 'carHorn2' : 'carHorn1')
             }
 
