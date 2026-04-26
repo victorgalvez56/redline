@@ -17,7 +17,7 @@ const MODE_DATA = {
         accent:     'var(--rl-redline)',
         objective:  'First driver to <em>5 kills</em> wins. Stay alive, hunt rivals.',
         controls:   '<kbd>WASD</kbd> drive · <kbd>SHIFT</kbd> boost · <kbd>X</kbd> brake · <kbd>SPACE</kbd> jump · <kbd>F</kbd> fire · <kbd>R</kbd> respawn',
-        tips:       'Grab orange ammo crates and green health spheres. Missiles home toward enemies — don\'t waste them on walls.',
+        tips:       'Grab ammo crates and health crystals. Missiles home toward enemies. <em>Watch for meteor markers</em> on the ground — dodge or take 32 HP.',
     },
 }
 

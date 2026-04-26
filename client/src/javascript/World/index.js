@@ -26,6 +26,7 @@ import CombatPickups from './CombatPickups.js'
 import HazardZones from './HazardZones.js'
 import ArenaMinimap from './ArenaMinimap.js'
 import { ARENA_PICKUPS } from './CombatPickups.js'
+import Meteors from './Meteors.js'
 
 export default class World
 {
@@ -868,6 +869,16 @@ export default class World
             hazards:          this.hazardZones.getMinimapZones(),
         })
 
+        // ── Meteor shower — environmental hazard, falls every 2-4s ──
+        this.meteors = new Meteors({
+            scene:        this.scene,
+            physics:      this.physics,
+            healthSystem: this.healthSystem,
+            weapons:      this.weapons,
+            sounds:       this.sounds,
+            onShake:      () => this._shakeCamera(),
+        })
+
         // ── Tick ──
         this.time.on('tick', () =>
         {
@@ -876,6 +887,7 @@ export default class World
             this.combatPickups.update(dt)
             this.hazardZones?.update(dt)
             this.arenaMinimap?.update(dt)
+            this.meteors?.update(dt)
         })
     }
 
