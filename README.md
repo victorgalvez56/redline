@@ -202,5 +202,3 @@ If you want to chip in but aren't sure where to start, the codebase has plenty o
 ## Acknowledgments
 
 REDLINE began as an educational fork of [**Bruno Simon's `folio-2019`**](https://github.com/brunosimon/folio-2019) — the matcap shader pipeline, shadow system, GLTF loader integration, and base car physics setup are derived from his original work. This repo evolved into a separate game (multiplayer, lap timing, combat, arena, weapons, hazards, REDLINE branding) but the foundation is his.
-
-Bruno's portfolio is **MIT-licensed**, and so is REDLINE. See [LICENSE](LICENSE) for the full text and copyright notices.
