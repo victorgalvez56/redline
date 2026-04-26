@@ -356,16 +356,18 @@ export default class Controls extends EventEmitter
         }
 
         // Slot 0 = bottom (most reachable). Stack rises upward.
-        this.touch.brake = makeHold('brake', 'BRAKE', '⊘', 0,
+        // Using emoji glyphs because unicode symbols (⊘ ⚡ ⇧) fall back to
+        // generic triangles on some Android system fonts.
+        this.touch.brake = makeHold('brake', 'BRAKE', '🛑', 0,
             () => { this.actions.brake = true;  this._sendInput() },
             () => { this.actions.brake = false; this._sendInput() })
 
-        this.touch.boost = makeHold('boost', 'BOOST', '⚡', 1,
+        this.touch.boost = makeHold('boost', 'BOOST', '🔥', 1,
             () => { this.actions.boost = true;  this._sendInput() },
             () => { this.actions.boost = false; this._sendInput() },
             'amber')
 
-        this.touch.jump = makeTap('jump', 'JUMP', '⇧', 2,
+        this.touch.jump = makeTap('jump', 'JUMP', '⬆️', 2,
             () => this.trigger('action', ['jump']),
             'cyan')
 
