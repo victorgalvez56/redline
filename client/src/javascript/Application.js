@@ -223,12 +223,20 @@ export default class Application
 
         const refresh = () =>
         {
-            if(onlineCount > 1)
-                setState('connected', `ONLINE · ${onlineCount} PLAYERS`)
-            else if(onlineCount === 1)
-                setState('connected', 'ONLINE · 1 PLAYER')
-            else
-                setState('connected', 'CONNECTED')
+            const ms = this.network.latency
+            const ping = (ms !== undefined && ms !== null) ? ` · ${ms}MS` : ''
+
+            // Pick base state class on ping quality (only when connected)
+            let cls = 'connected'
+            if(typeof ms === 'number')
+            {
+                if(ms > 220) cls = 'bad-ping'
+                else if(ms > 110) cls = 'lagging'
+            }
+
+            if(onlineCount > 1)        setState(cls, `ONLINE · ${onlineCount}P${ping}`)
+            else if(onlineCount === 1) setState(cls, `ONLINE · 1P${ping}`)
+            else                       setState(cls, `CONNECTED${ping}`)
         }
 
         // Initial state
@@ -243,7 +251,6 @@ export default class Application
         this.network.on('disconnected', () =>
         {
             onlineCount = 0
-            // After a successful first connect, label as RETRYING; before that, keep CONNECTING
             setState('disconnected', everConnected ? 'DISCONNECTED · RETRYING' : 'SERVER UNREACHABLE')
         })
 
@@ -253,17 +260,9 @@ export default class Application
             refresh()
         })
 
-        this.network.on('player:joined', () =>
-        {
-            onlineCount++
-            refresh()
-        })
-
-        this.network.on('player:left', () =>
-        {
-            onlineCount = Math.max(1, onlineCount - 1)
-            refresh()
-        })
+        this.network.on('player:joined', () => { onlineCount++;                              refresh() })
+        this.network.on('player:left',   () => { onlineCount = Math.max(1, onlineCount - 1); refresh() })
+        this.network.on('ping',          () => { refresh() })
     }
 
     _setupLoadingScreen()

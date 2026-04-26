@@ -1088,6 +1088,8 @@
 .rl-conn-status.connecting   { color: #FFB627; border-color: rgba(255, 182, 39, 0.35); }
 .rl-conn-status.connected    { color: #2ecc71; border-color: rgba(46, 204, 113, 0.35); }
 .rl-conn-status.disconnected { color: #FF2E4D; border-color: rgba(255, 46, 77, 0.45); }
+.rl-conn-status.lagging      { color: #FFB627; border-color: rgba(255, 182, 39, 0.40); }
+.rl-conn-status.bad-ping     { color: #FF2E4D; border-color: rgba(255, 46, 77, 0.45); }
 
 @keyframes rl-conn-pulse {
     0%, 100% { opacity: 0.7; transform: scale(1);   }

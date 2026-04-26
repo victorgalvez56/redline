@@ -21,6 +21,15 @@ export default class Network extends EventEmitter
         {
             console.log('[network] connected id=', this.socket.id)
             this.trigger('connected')
+
+            // If we were previously joined to a room and just reconnected
+            // (server removed us on disconnect), automatically re-emit the
+            // join so we land back in the game without bouncing through the
+            // lobby UI again.
+            if(this._wasJoined)
+            {
+                this.socket.emit('player:join', this._lastJoinPayload)
+            }
         })
 
         this.socket.on('disconnect', () =>
@@ -98,21 +107,25 @@ export default class Network extends EventEmitter
             this.trigger('combat:carDestroyed', [data])
         })
 
-        // Latency measurement
+        // Latency measurement — fires 'ping' event each round-trip so the
+        // status pill / HUD can render the value in real time
         this._pingInterval = setInterval(() =>
         {
             const start = Date.now()
             this.socket.emit('ping', () =>
             {
                 this.latency = Date.now() - start
+                this.trigger('ping', [this.latency])
             })
-        }, 2000)
+        }, 1500)
     }
 
     join(name, carColor, carType = 'default')
     {
         this.localPlayerName = name
-        this.socket.emit('player:join', { name, carColor, carType })
+        this._wasJoined        = true
+        this._lastJoinPayload  = { name, carColor, carType }
+        this.socket.emit('player:join', this._lastJoinPayload)
     }
 
     sendInput(actions)
