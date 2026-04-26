@@ -198,6 +198,11 @@ export default class Controls extends EventEmitter
         this.touch.$root.id = 'rl-touch-controls'
         document.body.appendChild(this.touch.$root)
 
+        // Refcount sets for actions that multiple sources can press
+        // (joystick + forward/backward/boost buttons).
+        this._upHeldBy   = new Set()
+        this._downHeldBy = new Set()
+
         this._buildTouchJoystick()
         this._buildTouchButtons()
 
@@ -244,8 +249,10 @@ export default class Controls extends EventEmitter
         this.sizes.on('resize', updateCenter)
         requestAnimationFrame(updateCenter)
 
-        // Convert horizontal deflection → steering. Y-axis is ignored
-        // because forward/backward are dedicated buttons (GAS / BRAKE).
+        // 2-axis steering: X = left/right, Y = forward/back. Joystick is
+        // refcounted as a source for up/down so it composes with the
+        // forward / backward / boost buttons without one cancelling the
+        // other on release.
         this.time.on('tick', () =>
         {
             if(!joy.active) return
@@ -256,18 +263,29 @@ export default class Controls extends EventEmitter
 
             const left  = dx < -DZ
             const right = dx >  DZ
+            const up    = dy < -DZ
+            const down  = dy >  DZ
+
+            // Update refcount sets (joystick is a source for up/down)
+            if(up)   this._upHeldBy.add('joystick');   else this._upHeldBy.delete('joystick')
+            if(down) this._downHeldBy.add('joystick'); else this._downHeldBy.delete('joystick')
+            const newUp   = this._upHeldBy.size   > 0
+            const newDown = this._downHeldBy.size > 0
 
             const changed =
-                left  !== this.actions.left ||
-                right !== this.actions.right
+                left   !== this.actions.left  ||
+                right  !== this.actions.right ||
+                newUp  !== this.actions.up    ||
+                newDown !== this.actions.down
 
             this.actions.left  = left
             this.actions.right = right
+            this.actions.up    = newUp
+            this.actions.down  = newDown
 
             if(changed) this._sendInput()
 
-            // Cursor still follows the full 2D touch — feels more analog
-            // than a slider, even though only X-axis affects the car
+            // Cursor follows touch, capped to 50px radius
             const dist = Math.min(Math.hypot(dx, dy), 50)
             const ang  = Math.atan2(dy, dx)
             joy.$cursor.style.transform =
@@ -307,12 +325,18 @@ export default class Controls extends EventEmitter
             joy.touchId = null
             joy.$cursor.style.transform = 'translate(0,0)'
 
-            if(this.actions.left || this.actions.right)
-            {
-                this.actions.left  = false
-                this.actions.right = false
-                this._sendInput()
-            }
+            // Clear joystick's contribution to refcounted up/down
+            this._upHeldBy.delete('joystick')
+            this._downHeldBy.delete('joystick')
+            const newUp   = this._upHeldBy.size   > 0
+            const newDown = this._downHeldBy.size > 0
+
+            let changed = false
+            if(this.actions.left)              { this.actions.left  = false; changed = true }
+            if(this.actions.right)             { this.actions.right = false; changed = true }
+            if(this.actions.up   !== newUp)    { this.actions.up    = newUp;  changed = true }
+            if(this.actions.down !== newDown)  { this.actions.down  = newDown; changed = true }
+            if(changed) this._sendInput()
         }
         document.addEventListener('touchend',    releaseJoy)
         document.addEventListener('touchcancel', releaseJoy)
@@ -378,13 +402,9 @@ export default class Controls extends EventEmitter
 
         // Slots 0-3: original Bruno layout. Slots 4-5: new actions.
         //
-        // Multi-button conflict guard: forward + boost both want actions.up.
-        // If both are held and one releases, naive release would clear up
-        // even though the other is still pressed. Track a Set of "sources"
-        // per directional action and only clear when the set empties.
-        this._upHeldBy   = new Set()
-        this._downHeldBy = new Set()
-
+        // Multi-source conflict guard: forward + boost + joystick can all
+        // drive actions.up. Each source adds/removes itself from a Set;
+        // the action is true while the set is non-empty.
         const setHeld = (set, source, action, held) =>
         {
             if(held) set.add(source); else set.delete(source)
