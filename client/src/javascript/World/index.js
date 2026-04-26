@@ -621,7 +621,7 @@ export default class World
     _setupJump()
     {
         const COOLDOWN_MS = 600
-        const STRENGTH    = 750     // peak ~13m for chassis mass 40kg
+        const STRENGTH    = 530     // peak ~6.5m (halved from previous ~13m)
 
         let lastJumpAt = 0
 

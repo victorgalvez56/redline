@@ -4,11 +4,12 @@ import * as THREE from 'three'
 const FALL_TIME           = 2200    // ms from spawn (high in sky) to impact
 const SPAWN_HEIGHT        = 70      // meters above the arena floor
 const SPAWN_RANGE         = 38      // ± meters from arena center on each axis
-const SPAWN_INTERVAL_MIN  = 2200    // ms minimum between spawns
-const SPAWN_INTERVAL_MAX  = 4200    // ms maximum
-const FIRST_SPAWN_DELAY   = 4000    // grace period after combat starts
+const SPAWN_INTERVAL_MIN  = 500     // ms minimum between spawns
+const SPAWN_INTERVAL_MAX  = 1200    // ms maximum (avg ~850ms = ~70/min)
+const FIRST_SPAWN_DELAY   = 2500    // grace period after combat starts
 const IMPACT_RADIUS       = 5.5
 const IMPACT_DAMAGE       = 32
+const NEAR_DIST           = 14      // distance for sound + camera shake
 
 // ── Meteors class ──────────────────────────────────────────────────────────
 export default class Meteors
@@ -141,22 +142,26 @@ export default class Meteors
     // ── Impact ─────────────────────────────────────────────────────────────
     _impact(m)
     {
-        // Visual explosion (reuse the missile explosion FX from Weapons)
+        // Visual explosion always plays — it's environmental atmosphere
         if(this.weapons?._explodeAt) this.weapons._explodeAt(m.x, m.y, 0.5)
 
-        // Sound + camera shake
-        this.sounds?.play('carHit', 14)
-        this.shake?.()
-
-        // Damage local car if it's inside the impact radius and on the ground
         const body = this.physics?.car?.chassis?.body
         if(!body) return
-        if(this.healthSystem?.isDead?.()) return
 
         const dx   = body.position.x - m.x
         const dy   = body.position.y - m.y
         const dist = Math.sqrt(dx * dx + dy * dy)
 
+        // Sound + camera shake only fire for nearby impacts so the screen
+        // isn't shaking constantly with the dense meteor shower
+        if(dist < NEAR_DIST)
+        {
+            this.sounds?.play('carHit', 14)
+            this.shake?.()
+        }
+
+        // Damage local car if it's inside the impact radius and on the ground
+        if(this.healthSystem?.isDead?.()) return
         if(dist < IMPACT_RADIUS && body.position.z < 4)
         {
             this.healthSystem?.takeDamage(IMPACT_DAMAGE)
