@@ -6,9 +6,9 @@
 :root {
     /* Surfaces */
     --rl-bg-deep:        #08080F;
-    --rl-bg-surface:     #13131F;
-    --rl-bg-elevated:    #1C1C2E;
-    --rl-border:         #26263A;
+    --rl-bg-surface:     #1A1A2D;
+    --rl-bg-elevated:    #25253D;
+    --rl-border:         #3A3A55;
 
     /* Accents */
     --rl-redline:        #FF2E4D;
@@ -480,14 +480,17 @@
     gap: var(--rl-4);
     padding: var(--rl-6);
     background: var(--rl-bg-surface);
-    border: 1px solid var(--rl-border);
+    border: 1.5px solid var(--rl-border);
     border-radius: var(--rl-radius-lg);
     cursor: pointer;
     overflow: hidden;
     text-align: left;
     width: 100%;
-    min-width: 0;       /* prevents grid blowout */
+    min-width: 0;
     box-sizing: border-box;
+    box-shadow:
+        0 6px 24px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
     transition:
         transform 0.25s var(--rl-ease),
         border-color 0.25s var(--rl-ease),
@@ -1042,6 +1045,49 @@
     letter-spacing: 0.15em !important;
 }
 #btn-change-settings:hover { color: var(--rl-text-2) !important; }
+
+/* ── Connection status pill ────────────────────────────────────────────── */
+.rl-conn-status {
+    position: fixed;
+    top: var(--rl-4);
+    right: var(--rl-4);
+    z-index: 1900;
+    display: flex;
+    align-items: center;
+    gap: var(--rl-2);
+    padding: 6px 14px 6px 12px;
+    background: rgba(8, 8, 15, 0.78);
+    border: 1px solid var(--rl-border);
+    border-radius: 999px;
+    font-family: var(--rl-font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    color: var(--rl-text-2);
+    -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+    pointer-events: none;
+    user-select: none;
+    transition: color 0.3s var(--rl-ease), border-color 0.3s var(--rl-ease);
+}
+
+.rl-conn-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 8px currentColor;
+    animation: rl-conn-pulse 1.6s ease-in-out infinite;
+}
+
+.rl-conn-status.connecting   { color: #FFB627; border-color: rgba(255, 182, 39, 0.35); }
+.rl-conn-status.connected    { color: #2ecc71; border-color: rgba(46, 204, 113, 0.35); }
+.rl-conn-status.disconnected { color: #FF2E4D; border-color: rgba(255, 46, 77, 0.45); }
+
+@keyframes rl-conn-pulse {
+    0%, 100% { opacity: 0.7; transform: scale(1);   }
+    50%      { opacity: 1;   transform: scale(1.3); }
+}
 
 /* ── Combat: kill counter HUD ──────────────────────────────────────────── */
 #kill-counter {

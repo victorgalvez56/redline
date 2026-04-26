@@ -166,10 +166,8 @@ export default class EntryFlow
         if(!this._obBound)
         {
             this._obBound = true
-            this.$onboarding.querySelector('.rl-ob-btn-solo').addEventListener('click',
-                () => this._enterGame(true))
             this.$onboarding.querySelector('.rl-ob-btn-online').addEventListener('click',
-                () => this._enterGame(false))
+                () => this._enterGame())
             this.$onboarding.querySelector('.rl-ob-back').addEventListener('click',
                 () => this._closeOnboarding())
             this._obKeyHandler = (e) =>
@@ -209,11 +207,11 @@ export default class EntryFlow
 
     // ── Final transition into the game ──────────────────────────────────────
 
-    _enterGame(soloMode)
+    _enterGame()
     {
-        // Set game config
+        // Set game config — always multiplayer
         this.config.gameMode = this._currentMode
-        this.config.soloMode = !!soloMode
+        this.config.soloMode = false
 
         // Animate everything out
         const card = this.$onboarding.querySelector('.rl-ob-card')

@@ -43,6 +43,13 @@ export default class Application
 
         this._setupLoadingScreen()
         this._setupEntryFlow()
+
+        // Connect to the multiplayer server immediately on page load so the
+        // status pill reads "CONNECTING… → CONNECTED" before the user even
+        // sees the menu. Saves them from clicking ENTER and discovering the
+        // server is down.
+        this.setNetwork()
+        this._setupConnectionStatus()
     }
 
     setConfig()
@@ -51,8 +58,8 @@ export default class Application
         this.config.debug      = window.location.hash === '#debug'
         this.config.cyberTruck = window.location.hash === '#cybertruck'
         this.config.touch      = false
-        this.config.soloMode   = false
-        this.config.gameMode   = 'race'    // 'race' | 'combat'
+        this.config.soloMode   = false                  // multiplayer-only
+        this.config.gameMode   = 'race'                 // 'race' | 'combat'
 
         window.addEventListener('touchstart', () =>
         {
@@ -176,7 +183,13 @@ export default class Application
 
     _initGame()
     {
-        this.setNetwork()
+        // Network already created in constructor — just spin up the lobby
+        // and the World. Lobby uses the existing connection.
+        this.lobbyUI = new LobbyUI({
+            network:    this.network,
+            config:     this.config,
+            onSoloJoin: () => this.world?.onSoloJoin(),
+        })
         this.setWorld()
         this.setTitle()
 
@@ -186,21 +199,70 @@ export default class Application
 
     setNetwork()
     {
-        if(!this.config.soloMode)
+        // Multiplayer-only — always create the Network and connect now
+        this.network = new Network()
+        this.network.connect()
+        this.chat    = new Chat({ network: this.network })
+    }
+
+    _setupConnectionStatus()
+    {
+        const $el = document.getElementById('rl-conn-status')
+        if(!$el || !this.network) return
+
+        const $label = $el.querySelector('.rl-conn-label')
+        let onlineCount = 0
+        let everConnected = false
+
+        const setState = (state, text) =>
         {
-            this.network = new Network()
-            this.network.connect()
-            this.chat    = new Chat({ network: this.network })
-        }
-        else
-        {
-            this.network = null
+            $el.classList.remove('connecting', 'connected', 'disconnected')
+            $el.classList.add(state)
+            if($label) $label.textContent = text
         }
 
-        this.lobbyUI = new LobbyUI({
-            network:    this.network,
-            config:     this.config,
-            onSoloJoin: () => this.world?.onSoloJoin(),
+        const refresh = () =>
+        {
+            if(onlineCount > 1)
+                setState('connected', `ONLINE · ${onlineCount} PLAYERS`)
+            else if(onlineCount === 1)
+                setState('connected', 'ONLINE · 1 PLAYER')
+            else
+                setState('connected', 'CONNECTED')
+        }
+
+        // Initial state
+        setState('connecting', 'CONNECTING…')
+
+        this.network.on('connected', () =>
+        {
+            everConnected = true
+            refresh()
+        })
+
+        this.network.on('disconnected', () =>
+        {
+            onlineCount = 0
+            // After a successful first connect, label as RETRYING; before that, keep CONNECTING
+            setState('disconnected', everConnected ? 'DISCONNECTED · RETRYING' : 'SERVER UNREACHABLE')
+        })
+
+        this.network.on('room:joined', ({ existingPlayers }) =>
+        {
+            onlineCount = (existingPlayers?.length ?? 0) + 1
+            refresh()
+        })
+
+        this.network.on('player:joined', () =>
+        {
+            onlineCount++
+            refresh()
+        })
+
+        this.network.on('player:left', () =>
+        {
+            onlineCount = Math.max(1, onlineCount - 1)
+            refresh()
         })
     }
 

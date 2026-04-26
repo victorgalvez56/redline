@@ -751,6 +751,12 @@
 
     <canvas class="canvas js-canvas"></canvas>
 
+    <!-- ── Connection status pill (top-right, persistent) ── -->
+    <div id="rl-conn-status" class="rl-conn-status connecting">
+        <span class="rl-conn-dot" aria-hidden="true"></span>
+        <span class="rl-conn-label">CONNECTING…</span>
+    </div>
+
     <!-- ── REDLINE: Title screen ── -->
     <div id="redline-title" class="rl-overlay">
         <!-- Synthwave atmosphere layers -->
@@ -852,9 +858,6 @@
             </div>
 
             <div class="rl-ob-cta">
-                <button class="rl-ob-btn rl-ob-btn-solo" type="button">
-                    <span>Play Solo</span>
-                </button>
                 <button class="rl-ob-btn rl-ob-btn-online" type="button">
                     <span>Play Online</span>
                     <span aria-hidden="true">→</span>
