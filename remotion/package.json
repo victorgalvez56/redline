@@ -1,0 +1,23 @@
+{
+  "name": "redline-trailer",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "remotion studio",
+    "render": "remotion render Trailer out/redline-trailer.mp4",
+    "render:ig": "remotion render TrailerVertical out/redline-trailer-vertical.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.250",
+    "@remotion/google-fonts": "^4.0.250",
+    "@remotion/media": "^4.0.250",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "remotion": "^4.0.250"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "typescript": "^5.4.0"
+  }
+}
