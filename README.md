@@ -171,42 +171,6 @@ Round-trip pings double as a clock-sync mechanism: the server returns its own `D
 
 A keyboard is currently required — touch controls are stubbed out but not wired up.
 
-## Trailer pipeline
-
-The repo ships with a [Remotion](https://www.remotion.dev/) project under `remotion/` that takes a screen recording at `remotion/public/gameplay.mp4` and bookends it with an animated intro (chromatic aberration on the wordmark + synthwave grid + speed lines) and an outro (CTA + URL). Background music is generated procedurally with FFmpeg.
-
-```bash
-cd remotion
-npm install
-# drop a 9–20s gameplay clip at public/gameplay.mp4
-npm run dev      # studio preview at http://localhost:3000
-npm run render   # → out/redline-trailer.mp4
-```
-
-## Production deployment
-
-Production runs on a $5/mo VPS behind Caddy:
-
-```
-Caddy (auto-SSL via Let's Encrypt)
-├── /            → /var/www/redline/      (Vite static build)
-└── /socket.io/* → reverse_proxy localhost:3017  (Node game server)
-```
-
-Game server is managed by `systemd` (unit at `/etc/systemd/system/redline.service`) so it auto-restarts on crash and on boot.
-
-A typical redeploy cycle:
-
-```bash
-ssh root@your-vps "
-  cd /root/projects/redline && git pull origin main &&
-  cd client && npm install && npm run build &&
-  cp -r dist/. /var/www/redline/ &&
-  cd ../server && npm install &&
-  systemctl restart redline
-"
-```
-
 ## Contributing
 
 PRs welcome. The repo is small enough to read top-to-bottom in an afternoon.
@@ -240,7 +204,3 @@ If you want to chip in but aren't sure where to start, the codebase has plenty o
 REDLINE began as an educational fork of [**Bruno Simon's `folio-2019`**](https://github.com/brunosimon/folio-2019) — the matcap shader pipeline, shadow system, GLTF loader integration, and base car physics setup are derived from his original work. This repo evolved into a separate game (multiplayer, lap timing, combat, arena, weapons, hazards, REDLINE branding) but the foundation is his.
 
 Bruno's portfolio is **MIT-licensed**, and so is REDLINE. See [LICENSE](LICENSE) for the full text and copyright notices.
-
-## License
-
-[MIT](LICENSE) © 2026 Victor Galvez · derived from MIT © 2019 Bruno Simon.
