@@ -4,8 +4,8 @@ import * as THREE from 'three'
 const FALL_TIME           = 2200    // ms from spawn (high in sky) to impact
 const SPAWN_HEIGHT        = 70      // meters above the arena floor
 const SPAWN_RANGE         = 38      // ± meters from arena center on each axis
-const SPAWN_INTERVAL_MIN  = 500     // ms minimum between spawns
-const SPAWN_INTERVAL_MAX  = 1200    // ms maximum (avg ~850ms = ~70/min)
+const SPAWN_INTERVAL_MIN  = 250     // ms minimum between spawns
+const SPAWN_INTERVAL_MAX  = 600     // ms maximum (avg ~425ms = ~140/min)
 const FIRST_SPAWN_DELAY   = 2500    // grace period after combat starts
 const IMPACT_RADIUS       = 5.5
 const IMPACT_DAMAGE       = 32

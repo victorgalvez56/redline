@@ -522,6 +522,11 @@
 .rl-card[data-mode="combat"]  { --card-accent: var(--rl-redline); }
 .rl-card[data-mode="arcade"]  { --card-accent: var(--rl-amber); }
 
+/* Race mode is currently hidden from the menu */
+.rl-card[data-mode="race"] { display: none; }
+.rl-pill[data-mode="race"] { display: none; }
+.rl-pill[data-mode="race"] + .rl-pill-divider { display: none; }
+
 .rl-card-icon {
     font-size: 32px;
     width: 56px;

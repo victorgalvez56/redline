@@ -621,7 +621,7 @@ export default class World
     _setupJump()
     {
         const COOLDOWN_MS = 600
-        const STRENGTH    = 530     // peak ~6.5m (halved from previous ~13m)
+        const STRENGTH    = 375     // peak ~3.3m (halved again from ~6.5m)
 
         let lastJumpAt = 0
 

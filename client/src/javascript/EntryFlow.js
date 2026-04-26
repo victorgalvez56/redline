@@ -81,6 +81,12 @@ export default class EntryFlow
         document.removeEventListener('keydown', this._titleHandler)
         this.$title.removeEventListener('click', this._titleClickHandler)
 
+        // SHORTCUT: With Race hidden, Combat is the only mode — skip the
+        // menu and onboarding entirely. Title press-key goes straight
+        // into the game, only the lobby (name/color/car) stands between.
+        this._currentMode = 'combat'
+        this._screen      = 'transitioning'
+
         const wordmark = this.$title.querySelector('.rl-wordmark')
         const tagline  = this.$title.querySelector('.rl-tagline')
 
@@ -88,11 +94,14 @@ export default class EntryFlow
             onComplete: () =>
             {
                 this.$title.classList.remove('is-active')
-                this._showMenu()
+                this.$grain?.classList.add('hidden')
+                this.config.gameMode = 'combat'
+                this.config.soloMode = false
+                this.onComplete?.()
             },
         })
-        .to([wordmark, tagline, '.rl-slash', '.rl-prompt'], {
-            opacity: 0, y: -8, duration: 0.35, ease: 'power2.in', stagger: 0.04,
+        .to([wordmark, tagline, '.rl-slash', '.rl-prompt', '.rl-mode-pills'], {
+            opacity: 0, y: -8, duration: 0.4, ease: 'power2.in', stagger: 0.04,
         })
     }
 
