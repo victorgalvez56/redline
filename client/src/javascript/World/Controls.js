@@ -1,4 +1,3 @@
-import mobileTriangle       from '../../images/mobile/triangle.png'
 import mobileDoubleTriangle from '../../images/mobile/doubleTriangle.png'
 import mobileCross          from '../../images/mobile/cross.png'
 import EventEmitter         from '../Utils/EventEmitter'
@@ -223,10 +222,12 @@ export default class Controls extends EventEmitter
     _buildTouchJoystick()
     {
         const joy = this.touch.joystick = {
-            active:  false,
-            touchId: null,
-            current: { x: 0, y: 0 },
-            origin:  { x: 0, y: 0 },     // where the finger first landed
+            active:   false,
+            touchId:  null,
+            current:  { x: 0, y: 0 },
+            origin:   { x: 0, y: 0 },   // where the finger first landed
+            lastUp:   false,             // Y-direction at last release (for re-touch inheritance)
+            lastDown: false,
         }
 
         const $j = document.createElement('div')
@@ -260,9 +261,14 @@ export default class Controls extends EventEmitter
             const up    = dy < -DZ
             const down  = dy >  DZ
 
-            // Refcount: joystick is one of several sources of up/down
-            if(up)   this._upHeldBy.add('joystick');   else this._upHeldBy.delete('joystick')
-            if(down) this._downHeldBy.add('joystick'); else this._downHeldBy.delete('joystick')
+            // Refcount: only update up/down when outside the vertical deadzone.
+            // While the thumb stays inside the deadzone the last Y-direction
+            // is preserved, preventing accidental gas cuts from micro-drift.
+            if(up || down)
+            {
+                if(up)   this._upHeldBy.add('joystick');   else this._upHeldBy.delete('joystick')
+                if(down) this._downHeldBy.add('joystick'); else this._downHeldBy.delete('joystick')
+            }
             const newUp   = this._upHeldBy.size   > 0
             const newDown = this._downHeldBy.size > 0
 
@@ -292,6 +298,7 @@ export default class Controls extends EventEmitter
         $j.addEventListener('touchstart', (e) =>
         {
             e.preventDefault()
+            if(joy.active) return   // ignore stray second touch on the joystick area
             const t = e.changedTouches[0]
             if(!t) return
             joy.active    = true
@@ -300,6 +307,10 @@ export default class Controls extends EventEmitter
             joy.origin.y  = t.clientY
             joy.current.x = t.clientX
             joy.current.y = t.clientY
+            // Restore the direction from the previous touch so a brief
+            // lift-and-re-touch doesn't cut the gas for even one frame.
+            if(joy.lastUp)   this._upHeldBy.add('joystick')
+            if(joy.lastDown) this._downHeldBy.add('joystick')
             this.camera?.pan?.reset?.()
         }, { passive: false })
 
@@ -323,7 +334,9 @@ export default class Controls extends EventEmitter
             joy.touchId = null
             joy.$cursor.style.transform = 'translate(0,0)'
 
-            // Clear joystick's contribution to refcounted up/down
+            // Remember Y-direction for the next re-touch, then clear.
+            joy.lastUp   = this._upHeldBy.has('joystick')
+            joy.lastDown = this._downHeldBy.has('joystick')
             this._upHeldBy.delete('joystick')
             this._downHeldBy.delete('joystick')
             const newUp   = this._upHeldBy.size   > 0
@@ -341,11 +354,10 @@ export default class Controls extends EventEmitter
     }
 
     // ── Right-thumb action buttons ───────────────────────────────────────
-    // Bottom-up: backward · brake · forward · boost (Bruno's original 4)
-    //            + jump · fire (new — text labels)
+    // Bottom-up: brake · boost · jump · fire
     _buildTouchButtons()
     {
-        // Hold-style button with a PNG icon (original aesthetic)
+        // Hold-style button with a PNG icon
         const makeIconHold = (id, iconUrl, iconRotate, slot, onPress, onRelease, accent) =>
         {
             const $b = document.createElement('button')
@@ -376,7 +388,7 @@ export default class Controls extends EventEmitter
             return $b
         }
 
-        // Tap-style button with a text label (new actions: jump, fire)
+        // Tap-style button with a text label
         const makeTextTap = (id, label, slot, onTap, accent, hidden = false) =>
         {
             const $b = document.createElement('button')
@@ -398,61 +410,35 @@ export default class Controls extends EventEmitter
             return $b
         }
 
-        // Slots 0-3: original Bruno layout. Slots 4-5: new actions.
-        //
-        // Multi-source conflict guard: forward + boost + joystick can all
-        // drive actions.up. Each source adds/removes itself from a Set;
-        // the action is true while the set is non-empty.
-        const setHeld = (set, source, action, held) =>
-        {
-            if(held) set.add(source); else set.delete(source)
-            const newVal = set.size > 0
-            if(this.actions[action] !== newVal)
-            {
-                this.actions[action] = newVal
-                this._sendInput()
-            }
-        }
-
-        // Slot 0 (bottom): backward — triangle rotated 180°
-        this.touch.backward = makeIconHold('backward', mobileTriangle, 180, 0,
-            () => { setHeld(this._downHeldBy, 'backward', 'down', true);  this.camera?.pan?.reset?.() },
-            () => { setHeld(this._downHeldBy, 'backward', 'down', false) })
-
-        // Slot 1: brake — cross
-        this.touch.brake = makeIconHold('brake', mobileCross, 0, 1,
+        // Slot 0 (bottom): brake — cross
+        this.touch.brake = makeIconHold('brake', mobileCross, 0, 0,
             () => { this.actions.brake = true;  this._sendInput() },
             () => { this.actions.brake = false; this._sendInput() })
 
-        // Slot 2: forward — triangle (gas pedal)
-        this.touch.forward = makeIconHold('forward', mobileTriangle, 0, 2,
-            () => { setHeld(this._upHeldBy, 'forward', 'up', true);  this.camera?.pan?.reset?.() },
-            () => { setHeld(this._upHeldBy, 'forward', 'up', false) })
-
-        // Slot 3: boost — double triangle (boost = up + boost)
-        this.touch.boost = makeIconHold('boost', mobileDoubleTriangle, 0, 3,
+        // Slot 1: boost — double triangle
+        this.touch.boost = makeIconHold('boost', mobileDoubleTriangle, 0, 1,
             () =>
             {
-                setHeld(this._upHeldBy, 'boost', 'up', true)
+                this._upHeldBy.add('boost')
                 this.actions.boost = true
                 this.camera?.pan?.reset?.()
                 this._sendInput()
             },
             () =>
             {
-                setHeld(this._upHeldBy, 'boost', 'up', false)
+                this._upHeldBy.delete('boost')
                 this.actions.boost = false
                 this._sendInput()
             },
             'amber')
 
-        // Slot 4: jump (new) — text label, cyan accent
-        this.touch.jump = makeTextTap('jump', 'JUMP', 4,
+        // Slot 2: jump — text label, cyan accent
+        this.touch.jump = makeTextTap('jump', 'JUMP', 2,
             () => this.trigger('action', ['jump']),
             'cyan')
 
-        // Slot 5: fire (new) — text label, redline accent, combat-mode only
-        this.touch.fire = makeTextTap('fire', 'FIRE', 5,
+        // Slot 3: fire — text label, redline accent, combat-mode only
+        this.touch.fire = makeTextTap('fire', 'FIRE', 3,
             () => this.trigger('action', ['fire']),
             'redline',
             true)

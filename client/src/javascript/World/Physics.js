@@ -488,29 +488,6 @@ export default class Physics
             /**
              * Steering
              */
-            if(this.controls.touch)
-            {
-                let deltaAngle = 0
-
-                if(this.controls.touch.joystick.active)
-                {
-                    // Calculate delta between joystick and car angles
-                    deltaAngle = (this.controls.touch.joystick.angle.value - this.car.angle + Math.PI) % (Math.PI * 2) - Math.PI
-                    deltaAngle = deltaAngle < - Math.PI ? deltaAngle + Math.PI * 2 : deltaAngle
-                }
-
-                // Update steering directly
-                const goingForward = Math.abs(this.car.forwardSpeed) < 0.01 ? true : this.car.goingForward
-                this.car.steering = deltaAngle * (goingForward ? - 1 : 1)
-
-                // Clamp steer
-                if(Math.abs(this.car.steering) > this.car.options.controlsSteeringMax)
-                {
-                    this.car.steering = Math.sign(this.car.steering) * this.car.options.controlsSteeringMax
-                }
-            }
-
-            if(!this.controls.touch || !this.controls.touch.joystick.active)
             {
                 const steerStrength = this.time.delta * this.car.options.controlsSteeringSpeed
 
