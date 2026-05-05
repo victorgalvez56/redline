@@ -97,14 +97,24 @@ export default class Camera
 
                 if(this.config.xr)
                 {
-                    // In XR, the headset drives camera rotation. Position the rig
-                    // at car level (Z+1.5 = seated head height in Z-up world).
-                    // Don't call lookAt — the headset controls where the player looks.
-                    this.instance.position.set(
-                        this.targetEased.x,
-                        this.targetEased.y,
-                        this.targetEased.z + 1.5
-                    )
+                    // Use container as VR rig: set it to the same world position
+                    // and orientation as the web follow-cam. The XR headset pose
+                    // is applied ON TOP of this, so at rest the player sees the
+                    // exact same angle as the web version.
+                    this.container.matrixAutoUpdate = true
+
+                    // Compute web camera position (same formula as non-VR)
+                    const offset = this.angle.value.clone().normalize()
+                        .multiplyScalar(this.zoom.distance)
+                    this.instance.position.copy(this.targetEased).add(offset)
+                    this.instance.lookAt(this.targetEased)
+
+                    // Copy web cam transform to rig, then clear instance local transform
+                    // (XR will override instance with the headset pose relative to rig)
+                    this.container.position.copy(this.instance.position)
+                    this.container.quaternion.copy(this.instance.quaternion)
+                    this.instance.position.set(0, 0, 0)
+                    this.instance.quaternion.set(0, 0, 0, 1)
                     return
                 }
 

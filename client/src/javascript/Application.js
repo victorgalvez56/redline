@@ -123,6 +123,11 @@ export default class Application
     {
         this.config.xr = false
 
+        // "local" reference space: origin at headset position/orientation when
+        // session starts (no floor-standing Y offset). This keeps the XR pose
+        // close to identity at rest so the rig's own transform dominates.
+        this.renderer.xr.setReferenceSpaceType('local')
+
         const vrButton = VRButton.createButton(this.renderer)
         vrButton.id = 'vr-button'
         document.body.appendChild(vrButton)
