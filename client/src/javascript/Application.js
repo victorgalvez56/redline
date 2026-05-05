@@ -14,6 +14,7 @@ import EntryFlow from './EntryFlow.js'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { VRButton } from 'three/examples/jsm/webxr/VRButton.js'
 import BlurPass from './Passes/Blur.js'
 import GlowsPass from './Passes/Glows.js'
 
@@ -30,6 +31,7 @@ export default class Application
         this.setConfig()
         this.setDebug()
         this.setRenderer()
+        this.setXR()
         this.setCamera()
         this.setPasses()
 
@@ -60,6 +62,17 @@ export default class Application
         this.config.touch      = false
         this.config.soloMode   = false                  // multiplayer-only
         this.config.gameMode   = 'race'                 // 'race' | 'combat'
+
+        // Try to lock orientation to landscape on touch devices (works on Android Chrome;
+        // iOS Safari ignores it but the CSS overlay handles that case).
+        const touchCapable =
+            ('ontouchstart' in window) ||
+            (navigator.maxTouchPoints > 0) ||
+            (navigator.msMaxTouchPoints > 0)
+        if(touchCapable && screen.orientation?.lock)
+        {
+            screen.orientation.lock('landscape').catch(() => {})
+        }
 
         window.addEventListener('touchstart', () =>
         {
@@ -94,10 +107,38 @@ export default class Application
         this.renderer.setPixelRatio(2)
         this.renderer.setSize(this.sizes.viewport.width, this.sizes.viewport.height)
         this.renderer.autoClear = false
+        this.renderer.xr.enabled = true
+
+        // Drive the game tick from the renderer's animation loop so XR frames
+        // are submitted inside the correct XR session requestAnimationFrame.
+        this.time.useRendererLoop(this.renderer)
 
         this.sizes.on('resize', () =>
         {
             this.renderer.setSize(this.sizes.viewport.width, this.sizes.viewport.height)
+        })
+    }
+
+    setXR()
+    {
+        this.config.xr = false
+
+        const vrButton = VRButton.createButton(this.renderer)
+        vrButton.id = 'vr-button'
+        document.body.appendChild(vrButton)
+
+        this.renderer.xr.addEventListener('sessionstart', () =>
+        {
+            this.config.xr = true
+            const $touch = document.getElementById('rl-touch-controls')
+            if($touch) $touch.style.display = 'none'
+        })
+
+        this.renderer.xr.addEventListener('sessionend', () =>
+        {
+            this.config.xr = false
+            const $touch = document.getElementById('rl-touch-controls')
+            if($touch) $touch.style.display = ''
         })
     }
 
@@ -151,6 +192,14 @@ export default class Application
 
         this.time.on('tick', () =>
         {
+            if(this.config.xr)
+            {
+                // EffectComposer renders to an internal RT which can't be submitted
+                // to the XR session framebuffer — render the scene directly instead.
+                this.renderer.clear()
+                this.renderer.render(this.scene, this.camera.instance)
+                return
+            }
             this.passes.horizontalBlurPass.enabled = this.passes.horizontalBlurPass.material.uniforms.uStrength.value.x > 0
             this.passes.verticalBlurPass.enabled   = this.passes.verticalBlurPass.material.uniforms.uStrength.value.y > 0
             this.passes.composer.render()

@@ -21,9 +21,21 @@ export default class Time extends EventEmitter
     /**
      * Tick
      */
+    // Switch from window.requestAnimationFrame to renderer.setAnimationLoop
+    // so that render calls land inside the correct XR session frame.
+    useRendererLoop(renderer)
+    {
+        if(this.ticker) window.cancelAnimationFrame(this.ticker)
+        this._useRendererLoop = true
+        renderer.setAnimationLoop(this.tick)
+    }
+
     tick()
     {
-        this.ticker = window.requestAnimationFrame(this.tick)
+        if(!this._useRendererLoop)
+        {
+            this.ticker = window.requestAnimationFrame(this.tick)
+        }
 
         const current = Date.now()
 

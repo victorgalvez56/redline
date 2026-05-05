@@ -8,11 +8,12 @@ export default class Controls extends EventEmitter
     {
         super()
 
-        this.config = _options.config
-        this.sizes = _options.sizes
-        this.time = _options.time
-        this.camera = _options.camera
-        this.sounds = _options.sounds
+        this.config   = _options.config
+        this.sizes    = _options.sizes
+        this.time     = _options.time
+        this.camera   = _options.camera
+        this.sounds   = _options.sounds
+        this.renderer = _options.renderer   // needed for XR gamepad polling
 
         // Set by World after Network is ready
         this.network = null
@@ -48,6 +49,10 @@ export default class Controls extends EventEmitter
         this.actions.brake = false
         this.actions.boost = false
 
+        // Edge-detection state for XR tap buttons (A = jump, B = fire)
+        this._xrAWasPressed = false
+        this._xrBWasPressed = false
+
         document.addEventListener('visibilitychange', () =>
         {
             if(!document.hidden)
@@ -61,6 +66,77 @@ export default class Controls extends EventEmitter
                 this._sendInput()
             }
         })
+
+        // Poll XR controller gamepads every frame when presenting
+        this.time.on('tick', () =>
+        {
+            if(this.renderer?.xr?.isPresenting) this._pollXRGamepad()
+        })
+    }
+
+    // ── Meta Quest controller → actions ──────────────────────────────────
+    // Left thumbstick: X = steer, Y = gas/reverse
+    // Left trigger  : brake
+    // Right trigger : boost
+    // Right A button: jump (tap)
+    // Right B button: fire (tap, combat mode)
+    _pollXRGamepad()
+    {
+        const session = this.renderer.xr.getSession()
+        if(!session) return
+
+        const DZ = 0.2   // thumbstick deadzone
+
+        let up = false, down = false, left = false, right = false
+        let brake = false, boost = false
+        let aPressed = false, bPressed = false
+
+        for(const source of session.inputSources)
+        {
+            const gp = source.gamepad
+            if(!gp) continue
+
+            if(source.handedness === 'left')
+            {
+                const sx = gp.axes[2] ?? 0
+                const sy = gp.axes[3] ?? 0
+                if(sx < -DZ) left  = true
+                if(sx >  DZ) right = true
+                if(sy < -DZ) up    = true
+                if(sy >  DZ) down  = true
+                if(gp.buttons[0]?.pressed) brake = true
+            }
+
+            if(source.handedness === 'right')
+            {
+                if(gp.buttons[0]?.pressed)  boost    = true
+                if(gp.buttons[4]?.pressed)  aPressed = true
+                if(gp.buttons[5]?.pressed)  bPressed = true
+            }
+        }
+
+        // Fire one-shot events on press edge (not held)
+        if(aPressed && !this._xrAWasPressed) this.trigger('action', ['jump'])
+        if(bPressed && !this._xrBWasPressed) this.trigger('action', ['fire'])
+        this._xrAWasPressed = aPressed
+        this._xrBWasPressed = bPressed
+
+        const changed =
+            up    !== this.actions.up    ||
+            down  !== this.actions.down  ||
+            left  !== this.actions.left  ||
+            right !== this.actions.right ||
+            brake !== this.actions.brake ||
+            boost !== this.actions.boost
+
+        this.actions.up    = up
+        this.actions.down  = down
+        this.actions.left  = left
+        this.actions.right = right
+        this.actions.brake = brake
+        this.actions.boost = boost
+
+        if(changed) this._sendInput()
     }
 
     _sendInput()

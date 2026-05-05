@@ -222,11 +222,12 @@ export default class World
     setControls()
     {
         this.controls = new Controls({
-            config: this.config,
-            sizes:  this.sizes,
-            time:   this.time,
-            camera: this.camera,
-            sounds: this.sounds
+            config:   this.config,
+            sizes:    this.sizes,
+            time:     this.time,
+            camera:   this.camera,
+            sounds:   this.sounds,
+            renderer: this.renderer
         })
     }
 
@@ -900,6 +901,8 @@ export default class World
             this.arenaMinimap?.update(dt)
             this.meteors?.update(dt)
         })
+
+        this._setupArenaBoundsCheck()
     }
 
     _updateCombatHUD()
@@ -958,7 +961,7 @@ export default class World
         ][this.config.carColor ?? 0] || 0xff3333
 
         // Massive local explosion
-        this.weapons.explodeCar(px, py, pz, vx, vy, bodyColor)
+        this.weapons?.explodeCar(px, py, pz, vx, vy, bodyColor)
         this.sounds?.play('carHit', 18)
         this._shakeCamera()
         setTimeout(() => this._shakeCamera(), 80)
@@ -1066,18 +1069,21 @@ export default class World
         const BUFFER        = 2.5     // extra margin before drag starts
         const THRESHOLD_SQ  = (HALF_WIDTH + BUFFER) ** 2
         const INVALID_MS    = 3000    // continuous off-track time before lap invalidation
+        const KILL_MS       = 1500    // kill the player after this long outside the walls
 
         const $note  = document.getElementById('hud-lap-note')
-        let offTrack    = false
-        let noteShown   = false
-        let offTrackMs  = 0
+        let offTrack       = false
+        let noteShown      = false
+        let offTrackMs     = 0
         let lapMarkedInvalid = false
+        let oobKilled      = false
 
         this.lapTimer.on('lap', () => { offTrackMs = 0; lapMarkedInvalid = false })
 
         this.time.on('tick', () =>
         {
             if(!this.lapTimer?._active || !this.physics) return
+            if(oobKilled) return
 
             const body = this.physics.car.chassis.body
             const px   = body.position.x
@@ -1100,13 +1106,22 @@ export default class World
 
             if(offTrack)
             {
-                // Halve speed every 2 seconds off-track
+                // Slow the car down while off-track
                 const factor = Math.pow(0.5, dt / 2000)
                 body.velocity.x *= factor
                 body.velocity.y *= factor
 
-                // Accumulate and check for invalidation
                 offTrackMs += dt
+
+                // Kill after KILL_MS outside the walls
+                if(offTrackMs >= KILL_MS)
+                {
+                    oobKilled = true
+                    this._killOutOfBounds(() => { oobKilled = false; offTrackMs = 0 })
+                    return
+                }
+
+                // Lap invalidation after longer absence
                 if(!lapMarkedInvalid && offTrackMs >= INVALID_MS)
                 {
                     lapMarkedInvalid = true
@@ -1122,7 +1137,7 @@ export default class World
             }
             else
             {
-                offTrackMs = 0  // reset counter when back on track
+                offTrackMs = 0
             }
 
             // Show/hide "OFF TRACK" note (only if lap not already marked invalid)
@@ -1139,6 +1154,71 @@ export default class World
                 noteShown = false
             }
         })
+    }
+
+    // ── Called when the car escapes arena or track walls ─────────────────
+    _setupArenaBoundsCheck()
+    {
+        // Arena is 100×100 m; walls sit at ±50 m. Kill if the car slips past them.
+        const LIMIT = 52
+
+        this.time.on('tick', () =>
+        {
+            if(this.healthSystem?.isDead?.()) return
+            const body = this.physics?.car?.chassis?.body
+            if(!body) return
+            const { x, y } = body.position
+            if(Math.abs(x) > LIMIT || Math.abs(y) > LIMIT)
+            {
+                this.healthSystem.takeDamage(9999)
+            }
+        })
+    }
+
+    _killOutOfBounds(onRespawn)
+    {
+        const body = this.physics?.car?.chassis?.body
+        if(!body) return
+
+        const px = body.position.x, py = body.position.y, pz = body.position.z
+        const vx = body.velocity.x, vy = body.velocity.y
+
+        const bodyColor = [
+            0xff3333, 0x3366ff, 0x33cc66, 0xff8833,
+            0xaa44ff, 0x33cccc, 0xff66aa, 0xeeeeee,
+        ][this.config.carColor ?? 0] || 0xff3333
+
+        this.weapons?.explodeCar(px, py, pz, vx, vy, bodyColor)
+        this.sounds?.play('carHit', 18)
+        this._shakeCamera?.()
+        setTimeout(() => this._shakeCamera?.(), 80)
+        setTimeout(() => this._shakeCamera?.(), 180)
+
+        if(this.car?.chassis?.object) this.car.chassis.object.visible = false
+        this.car?.wheels?.items?.forEach(w => { w.visible = false })
+
+        if(this.network) this.network.sendCarDestroyed?.(px, py, pz, vx, vy, bodyColor)
+
+        const $ov    = document.getElementById('death-overlay')
+        const $timer = document.getElementById('death-timer')
+        if($ov) $ov.classList.add('visible')
+        let t = 3
+        const tick = () => { if($timer) $timer.textContent = t; if(t > 0) { t--; setTimeout(tick, 1000) } }
+        tick()
+
+        setTimeout(() =>
+        {
+            const sp = this._serverSpawnPos || { x: 5, y: -35 }
+            body.sleep()
+            body.position.set(sp.x, sp.y, 12)
+            body.quaternion.set(0, 0, 0, 1)
+            body.velocity.set(0, 0, 0)
+            body.angularVelocity.set(0, 0, 0)
+            body.wakeUp()
+            this._showLocalCar?.()
+            if($ov) $ov.classList.remove('visible')
+            onRespawn?.()
+        }, 3000)
     }
 
     _setupWrongWayDetection()

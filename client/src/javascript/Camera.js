@@ -95,6 +95,19 @@ export default class Camera
                 this.targetEased.y += (this.target.y - this.targetEased.y) * this.easing
                 this.targetEased.z += (this.target.z - this.targetEased.z) * this.easing
 
+                if(this.config.xr)
+                {
+                    // In XR, the headset drives camera rotation. Position the rig
+                    // at car level (Z+1.5 = seated head height in Z-up world).
+                    // Don't call lookAt — the headset controls where the player looks.
+                    this.instance.position.set(
+                        this.targetEased.x,
+                        this.targetEased.y,
+                        this.targetEased.z + 1.5
+                    )
+                    return
+                }
+
                 // Apply zoom
                 this.instance.position.copy(this.targetEased).add(this.angle.value.clone().normalize().multiplyScalar(this.zoom.distance))
 
